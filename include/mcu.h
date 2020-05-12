@@ -9,8 +9,8 @@
     Indique si l'image est de type couleur ou en niveaux de gris
 */
 enum color_type {
-    color,
-    grey
+    COLOR,
+    GREY
 };
 
 
@@ -40,5 +40,10 @@ struct array_mcu {
     (pas de downsampling, ou de passage en Y, Cb, Cr)
 */
 extern struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpg);
+
+/*
+    Détruit mcu et libère la mémoire
+*/
+extern void delete_mcu(struct array_mcu *mcu);
 
 #endif
