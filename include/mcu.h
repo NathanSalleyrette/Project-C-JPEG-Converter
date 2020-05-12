@@ -10,7 +10,8 @@
 */
 enum color_type {
     COLOR,
-    GREY
+    GREY,
+    NB_COLOR_TYPE
 };
 
 
