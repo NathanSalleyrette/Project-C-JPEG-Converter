@@ -15,15 +15,6 @@ enum color_type {
 };
 
 /*
-    Union pour les MCU qui peuvent prendre différents types de valeurs
-*/
-union u8s16 {
-    uint8_t u;
-    int16_t s;
-};
-
-
-/*
     Structure décrivant les MCUs
 
     array_mcu.data[canal][(i_mcu*h*v + i_bloc)*64 + i]
@@ -32,8 +23,8 @@ union u8s16 {
     Rien n'indique ce que contienne les canaux (R, G, B ou Y, Cb, Cr)
 */
 struct array_mcu {
-    union u8s16 **data; /* Data : array de 1 ou 3 canaux,
-                         * les canaux étant sous forme de chunks de 64 u8s16 */
+    int16_t **data;     /* Data : array de 1 ou 3 canaux (selon ct),
+                         * les canaux étant sous forme de chunks de 64 int16_t */
 
     size_t height;      /* Nombre de MCUs en hauteurs */
     size_t width;       /* Nombre de MCUs en largeur */
