@@ -4,6 +4,6 @@
 
 #include <jpeg_writer.h>
 
-struct jpeg *get_jpeg_from_console(int argc, char *argv[]);
+extern struct jpeg *get_jpeg_from_console(int argc, char *argv[]);
 
 #endif
