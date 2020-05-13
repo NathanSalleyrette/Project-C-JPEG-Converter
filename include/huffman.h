@@ -29,7 +29,6 @@ struct huffman {
 */
 extern struct huffman *get_huffman_from_freq(uint8_t n, uint32_t *frequences);
 
-
 /*
     Renvoie une array 2 pointeurs vers struct huffman si l'image est en niveaux
     de gris ou 4 pointeurs vers struct huffman si l'image est en couleurs
