@@ -6,7 +6,7 @@
 #include <string.h>
 #include <console.h>
 
-
+/* Function returning a jpeg struct containing all the data extracted from the command line */
 struct jpeg *get_jpeg_from_console(int argc, char **argv)
 {
 	if (argc < 2) {
@@ -14,6 +14,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		printf("Try : \'%s --help\' for more information.\n", argv[0]);
 		return NULL;
 	}
+
 	/* --help option */
 	if (strcmp(argv[1], "--help") == 0 && argc == 2) {
 		printf("Usage : \'%s [--options] <input_file>\'\n\n", argv[0]);
@@ -24,12 +25,17 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		printf("Specifies the sampling factors hxv for the 3 color componants (RGB), which are set by default to 1x1.\n");
 		return NULL;
 	}
+
 	/* flags to check that options are called only once */
 	bool outfile_flag = false;
 	bool sample_flag = false;
+
 	/* jpeg struct containing all the data extracted */
 	struct jpeg *infos = jpeg_create();
+	uint8_t sampling_factors[] = {1, 1, 1, 1, 1, 1};
+
 	for (int32_t i = 1; i < argc - 1; i++) {
+
 		/* --outfile option */
 		if (!strncmp(argv[i], "--outfile=", 10)) {
 			if (outfile_flag) {
@@ -44,6 +50,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 			jpeg_set_jpeg_filename(infos, output_filename);
 			outfile_flag = true;
 		}
+
 		/* --sample option */
 		else if (!strncmp(argv[i], "--sample=", 9)) {
 			if (sample_flag) {
@@ -53,6 +60,8 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 			uint8_t sampling_factors[] = {0, 0, 0, 0, 0, 0};
 			uint32_t j = 8;
 			uint8_t factor_index = 0;
+			
+			/* Reading option and testing if syntax is valid */
 			while (argv[i][j] != '\0') {
 				j++;
 				if (!isdigit(argv[i][j])) {
@@ -70,6 +79,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 				}
 				factor_index++;
 			}
+
 			/* Testing if sampling factors are valid */
 			uint8_t sum = 0;
 			for (uint8_t factor_index = 0; factor_index < 6; factor_index += 2) {
@@ -91,12 +101,26 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 			}
 			sample_flag = true;
 		}
+
+		/* Default case if option is invalid */
 		else {
 			printf("\'%s\' is not a valid option.\n", argv[i]);
 			printf("Try : \'%s --help\' for more information.\n", argv[0]);
 			return NULL;
 		}
 	}
+
+	/* Writing sampling factors in the jpeg struct */
+	uint8_t factor_index = 0;
+	for (uint8_t color = 0; color != NB_COLOR_COMPONENTS; color++) {
+		for (uint8_t direction = 0; direction != NB_DIRECTIONS; direction++) {
+			jpeg_set_sampling_factor(infos, (enum color_component)color, (enum direction)direction, sampling_factors[factor_index]);
+			factor_index++;
+		}
+		factor_index++;
+	}
+
+	/* Checking if input file is correct */
 	char *input_filename = argv[argc - 1];
 	size_t name_length = strlen(input_filename);
 	if (name_length < 4 || (strcmp(&input_filename[name_length - 4], ".ppm") && strcmp(&input_filename[name_length - 4], ".pgm"))) {
@@ -110,11 +134,14 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	}
 	fclose(image);
 	jpeg_set_ppm_filename(infos, input_filename);
+
+	/* Writing default output filename to the jpeg struct if hasn't been specified */
 	if (!outfile_flag) {
 		char output_filename[name_length + 1];
 		strcpy(output_filename, input_filename);
 		strcpy(&output_filename[name_length - 3], "jpg");
 		jpeg_set_jpeg_filename(infos, output_filename);
 	}
+
 	return infos;
 }
