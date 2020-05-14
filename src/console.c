@@ -136,7 +136,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		return NULL;
 	}
 	else if (!strcmp(&input_filename[name_length - 4], ".ppm")) {
-		type = PPM;      
+		type = PPM;
 	}
 	else if (!strcmp(&input_filename[name_length - 4], ".pgm")) {
 		type = PGM;
@@ -216,7 +216,8 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		return NULL;
 	}
 	fclose(image);
-	/* Writing image dimensions in the jpeg struct */
+	/* Writing image dimensions and number of colors in the jpeg struct */
+	jpeg_set_nb_components(infos, 1 + 2 * (type == PPM));
 	jpeg_set_image_width(infos, width);
 	jpeg_set_image_height(infos, height);
 
