@@ -6,6 +6,11 @@
 #include <string.h>
 #include <console.h>
 
+enum FileType {
+	PPM,
+	PGM
+};
+
 /* Function returning a jpeg struct containing all the data extracted from the command line */
 struct jpeg *get_jpeg_from_console(int argc, char **argv)
 {
@@ -17,12 +22,14 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 
 	/* --help option */
 	if (strcmp(argv[1], "--help") == 0 && argc == 2) {
-		printf("Usage : \'%s [--options] <input_file>\'\n\n", argv[0]);
-		printf("Possible options are :\n");
+		printf("Usage : \'%s [--options] <input_file>\'\n", argv[0]);
+		printf("This program allows you to encode a PPM or PGM file into a JPEG image.\n");
+		printf("It only supports binary formats with 256 shades for each component for input files.\n\n");
+		printf("Possible options are :\n\n");
 		printf("--outfile=output_file.jpg\n");
 		printf("Specifies the name for the ouptut file, which is by default set to <input_file>.jpg.\n\n");
 		printf("--sample=h1xv1,h2xv2,h3xv3\n");
-		printf("Specifies the sampling factors hxv for the 3 color componants (RGB), which are set by default to 1x1.\n");
+		printf("Specifies the sampling factors hxv for the 3 color componants (RGB), which are by default set to 1x1.\n");
 		return NULL;
 	}
 
@@ -123,7 +130,18 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	/* Checking if input file is correct */
 	char *input_filename = argv[argc - 1];
 	size_t name_length = strlen(input_filename);
-	if (name_length < 4 || (strcmp(&input_filename[name_length - 4], ".ppm") && strcmp(&input_filename[name_length - 4], ".pgm"))) {
+	enum FileType type;
+	if (name_length < 4) {
+		printf("Input file \'%s\' does not have \'.ppm\' or \'.pgm\' extension.\n", input_filename);
+		return NULL;
+	}
+	else if (!strcmp(&input_filename[name_length - 4], ".ppm")) {
+		type = PPM;      
+	}
+	else if (!strcmp(&input_filename[name_length - 4], ".pgm")) {
+		type = PGM;
+	}
+	else {
 		printf("Input file \'%s\' does not have \'.ppm\' or \'.pgm\' extension.\n", input_filename);
 		return NULL;
 	}
@@ -132,8 +150,76 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		printf("Input file \'%s\' does not exist.\n", input_filename);
 		return NULL;
 	}
-	fclose(image);
+	/* Writing input filename to the jpeg struct */
 	jpeg_set_ppm_filename(infos, input_filename);
+
+	/* Checking file header and extracing image dimensions */
+	if (fgetc(image) != 'P') {
+		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		return NULL;
+	}
+	if (fgetc(image) != '5' + (type == PPM)) {
+		printf("This JPEG encoder only supports binary files (with magic number \'P%i\' for P%cM) as input file.\n", 5 + (type == PPM), type == PPM ? 'P' : 'G');
+		return NULL;
+	}
+	if (!isspace(fgetc(image))) {
+		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		return NULL;
+	}
+	uint32_t width = 0;
+	char digit = fgetc(image);
+	if (!isdigit(digit)) {
+		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		return NULL;
+	}
+	while (isdigit(digit)) {
+		width *= 10;
+		width += digit - '0';
+		digit = fgetc(image);
+	}
+	if (!isspace(digit)) {
+		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		return NULL;
+	}
+	uint32_t height = 0;
+	digit = fgetc(image);
+	if (!isdigit(digit)) {
+		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		return NULL;
+	}
+	while (isdigit(digit)) {
+		height *= 10;
+		height += digit - '0';
+		digit = fgetc(image);
+	}
+	if (!isspace(digit)) {
+		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		return NULL;
+	}
+	uint32_t max = 0;
+	digit = fgetc(image);
+	if (!isdigit(digit)) {
+		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		return NULL;
+	}
+	while (isdigit(digit)) {
+		max *= 10;
+		max += digit - '0';
+		digit = fgetc(image);
+	}
+	if (max != 255) {
+		printf("This JPEG encoder ony support input files with 256 shades per color (maximum value of 255).\n");
+		return NULL;
+	}
+	if (!isspace(fgetc(image))) {
+		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		return NULL;
+	}
+	fclose(image);
+	/* Writing image dimensions in the jpeg struct */
+	jpeg_set_image_width(infos, width);
+	jpeg_set_image_height(infos, height);
+
 
 	/* Writing default output filename to the jpeg struct if hasn't been specified */
 	if (!outfile_flag) {
