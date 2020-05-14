@@ -2,47 +2,51 @@
 #define HUFFMAN_H
 
 #include <jpeg_writer.h>
+#include <mcu.h>
 
-/* Type opaque représentant un arbre de Huffman. */
-struct huff_table;
-
-/*
-    Construit un arbre de Huffman à partir d'une table
-    de symboles comme présenté en section 2.10.1 du sujet.
-    nb_symb_per_lengths est un tableau contenant le nombre
-    de symboles pour chaque longueur de 1 à 16,
-    symbols est le tableau  des symboles ordonnés,
-    et nb_symbols représente la taille du tableau symbols.
-*/
-extern struct huff_table *huffman_table_build(uint8_t *nb_symb_per_lengths,
-                                              uint8_t *symbols,
-                                              uint8_t nb_symbols);
 
 /*
-    Retourne le chemin dans l'arbre ht permettant d'atteindre
-    la feuille de valeur value. nb_bits est un paramètre de sortie
-    permettant de stocker la longueur du chemin retourné.
+    Structure représentant un arbre de Huffman pour JPEG
+    Utile pour coder les magnitudes
 */
-extern uint32_t huffman_table_get_path(struct huff_table *ht,
-                                       uint8_t value,
-                                       uint8_t *nb_bits);
+struct huffman {
+    /* Utile pour retrouver le chemin correspondant à un symbole */
+    uint32_t *chemins_par_symbole; /* array de taille magnitude_max + 1
+                                    * chemin dans les poids faible */
+    uint8_t *nbits_par_symbole; /* array de taille magnitude_max + 1
+                                 * correspond aux nombre de bits des chemins */
+
+    /* Utile pour l'écriture dans le jpeg */
+    uint8_t *n_par_etage; /* array de taille 16 */
+    uint8_t *array_symboles; /*array de taille sum(n_par_etage) */
+};
 
 /*
-   Retourne le tableau des symboles associé à l'arbre de
-   Huffman passé en paramètre.
+    Renvoie une structure huffman en fonction des fréquences
+    absolues en argument.
+    Ne prends pas en commpte les fréquences nulles et ne créé pas de chemin
+    uniquement composé de '1'.
 */
-extern uint8_t *huffman_table_get_symbols(struct huff_table *ht);
+extern struct huffman *get_huffman_from_freq(uint8_t n, uint32_t *frequences);
 
 /*
-    Retourne le tableau du nombre de symboles de chaque longueur
-    associé à l'arbre de Huffman passé en paramètre.
+    Renvoie une array 2 pointeurs vers struct huffman si l'image est en niveaux
+    de gris ou 4 pointeurs vers struct huffman si l'image est en couleurs
+    dans l'ordre suivant : (Y DC, Y AC) ou (Y DC, Y AC, Cb-Cr DC, Cb-Cr AC)
+    Ces struct huffman servent au codage des magnitudes
 */
-extern uint8_t *huffman_table_get_length_vector(struct huff_table *ht);
+extern struct huffman **get_huffman_from_mcu(struct array_mcu *mcu);
 
 /*
-    Détruit l'arbre de Huffman passé en paramètre et libère
-    toute la mémoire qui lui est associée.
+    Destruction et libération de la mémoire liée à huff
 */
-extern void huffman_table_destroy(struct huff_table *ht);
+extern void delete_huffman(struct huffman *huff);
+
+/*
+    Affiche sur la sortie standard les valeur des attributs de huff
+    L'argument est n est la valeur passée en argument à la crétion par
+    get_huffman_from_freq
+*/
+extern void description_huffman(struct huffman *huff, uint8_t n);
 
 #endif /* HUFFMAN_H */
