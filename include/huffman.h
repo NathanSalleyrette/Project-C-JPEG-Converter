@@ -19,6 +19,7 @@ struct huffman {
     /* Utile pour l'écriture dans le jpeg */
     uint8_t *n_par_etage; /* array de taille 16 */
     uint8_t *array_symboles; /*array de taille sum(n_par_etage) */
+    uint8_t n_symboles; /* valeur de sum(n_par_etage) */
 };
 
 /*
@@ -27,7 +28,7 @@ struct huffman {
     Ne prends pas en commpte les fréquences nulles et ne créé pas de chemin
     uniquement composé de '1'.
 */
-extern struct huffman *get_huffman_from_freq(uint8_t n, uint32_t *frequences);
+extern struct huffman *get_huffman_from_freq(uint32_t *frequences, uint8_t n);
 
 /*
     Renvoie une array 2 pointeurs vers struct huffman si l'image est en niveaux
@@ -44,8 +45,8 @@ extern void delete_huffman(struct huffman *huff);
 
 /*
     Affiche sur la sortie standard les valeur des attributs de huff
-    L'argument est n est la valeur passée en argument à la crétion par
-    get_huffman_from_freq
+    L'argument est n est la valeur passée en argument à la création par
+    get_huffman_from_freq (12 pour DC, 11 pour AC)
 */
 extern void description_huffman(struct huffman *huff, uint8_t n);
 
