@@ -20,6 +20,9 @@ OBJ_FILES_NO_MAIN=$(filter-out obj/main.o, $(OBJ_FILES))
 # Tous les fichiers executables créés par make test
 TEST_EXEC=$(patsubst test/%.c,bin/test_%,$(wildcard test/*.c))
 
+# Les dossiers à créer
+EMPTY_DIR=obj bin
+
 # Fichiers objet "prof". Lorsque vous aurez implémenté un de ces modules, il
 # faudra le retirer de cette liste pour lier ppm2jpeg à votre implémentation du
 # module en question. Le module htables_prof.o, qui contient la déclaration des tables
@@ -29,12 +32,15 @@ OBJ_PROF_FILES = obj_prof/jpeg_writer_prof.o \
 				 obj_prof/bitstream_prof.o   \
 				 obj_prof/htables_prof.o
 
-all: ppm2jpeg
+all: creer_dossiers ppm2jpeg
 
 ppm2jpeg: $(OBJ_FILES) $(OBJ_PROF_FILES)
 	$(LD) $(OBJ_FILES) $(OBJ_PROF_FILES) -o $@ $(LDFLAGS)
 
-test : $(TEST_EXEC)
+test : creer_dossiers $(TEST_EXEC)
+
+creer_dossiers :
+	mkdir -p $(EMPTY_DIR)
 
 bin/test_% : obj/test_%.o $(OBJ_FILES_NO_MAIN) $(OBJ_PROF_FILES)
 	$(LD) $^ -o $@ $(LDFLAGS)
