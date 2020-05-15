@@ -31,9 +31,6 @@ ppm2jpeg: $(OBJ_FILES) $(OBJ_PROF_FILES)
 obj/%.o: src/%.c
 	$(CC) -c $(CFLAGS) $< -o $@
 
-domwnsampling-01-test: tests/downsampling.c obj/jpeg_writer.o obj/muc.o obj/downsampling.o
-	gcc -o tests/downsampling-01-test tests/downsampling.c obj/jpeg_writer.o obj/muc.o obj/downsampling.o -Wall -Wextra -Iinclude
-
 .PHONY: clean
 
 clean:
