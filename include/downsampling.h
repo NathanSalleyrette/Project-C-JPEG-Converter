@@ -3,6 +3,8 @@
 
 # include "mcu.h"
 
-extern void downsample(struct jpeg fichier, struct array_mcu mcus);
+extern uint8_t* set_sf(struct jpeg* jpg, struct array_mcu* mcus);
+
+extern void downsample(struct jpeg* jpg, struct array_mcu* mcus);
 
 #endif /* _DOWNSAMPLING_H_ */

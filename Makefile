@@ -5,7 +5,7 @@ LD = gcc
 # C'est utile pour débugger, par contre en "production"
 # on active au moins les optimisations de niveau 2 (-O2).
 CFLAGS = -Wall -Wextra -std=c99 -Iinclude -O0 -g
-LDFLAGS =
+LDFLAGS = -lm
 
 # Par défaut, on compile tous les fichiers source (.c) qui se trouvent dans le
 # répertoire src/
@@ -26,10 +26,13 @@ OBJ_PROF_FILES = obj_prof/jpeg_writer_prof.o \
 all: ppm2jpeg
 
 ppm2jpeg: $(OBJ_FILES) $(OBJ_PROF_FILES)
-	$(LD) $(LDFLAGS) $(OBJ_FILES) $(OBJ_PROF_FILES) -o $@
+	$(LD) $(OBJ_FILES) $(OBJ_PROF_FILES) -o $@ $(LDFLAGS)
 
 obj/%.o: src/%.c
 	$(CC) -c $(CFLAGS) $< -o $@
+
+domwnsampling-01-test: tests/downsampling.c obj/jpeg_writer.o obj/muc.o obj/downsampling.o
+	gcc -o tests/downsampling-01-test tests/downsampling.c obj/jpeg_writer.o obj/muc.o obj/downsampling.o -Wall -Wextra -Iinclude
 
 .PHONY: clean
 
