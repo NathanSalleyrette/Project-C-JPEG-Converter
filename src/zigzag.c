@@ -30,11 +30,11 @@ void matrice_to_zigzag(struct array_mcu *mcu)
                     } else if (samplex == 0) {
                         /* On touche la limite ouest */
                         direction = 0;
-                        --sampley;
+                        ++sampley;
                     } else {
                         /* On descend normalement */
                         --samplex;
-                        --sampley;
+                        ++sampley;
                     }
                 } else {
                     if (sampley == 0) {
@@ -44,11 +44,11 @@ void matrice_to_zigzag(struct array_mcu *mcu)
                     } else if (samplex == 7) {
                         /* On touche la limite est */
                         direction = 1;
-                        --sampley;
+                        ++sampley;
                     } else {
                         /* On remonte normalement */
                         ++samplex;
-                        ++sampley;
+                        --sampley;
                     }
                 }
             }
