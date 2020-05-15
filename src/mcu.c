@@ -38,7 +38,7 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 	/* Reading all pixels and writing them into mcu->data in the right order */
 	for (uint32_t y_mcu = 0; y_mcu < mcus->height; y_mcu++) {
 		for (uint32_t y_pixel = 0; y_pixel < mcu_pixel_height; y_pixel++) {
-			for (uint32_t x_mcu = 0; x_mcu < mcus->width; x_mcu++){		
+			for (uint32_t x_mcu = 0; x_mcu < mcus->width; x_mcu++) {
 				for (uint32_t x_pixel = 0; x_pixel < mcu_pixel_width; x_pixel++) {
 					for (uint8_t component = 0; component < mcus->ct; component++) {
 						if (feof(image)) {

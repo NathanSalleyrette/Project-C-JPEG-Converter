@@ -1,7 +1,6 @@
 #ifndef HUFFMAN_H
 #define HUFFMAN_H
 
-#include <jpeg_writer.h>
 #include <mcu.h>
 
 

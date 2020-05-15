@@ -1,9 +1,11 @@
 #ifndef MCU_H
 #define MCU_H
 
-#include <jpeg_writer.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+/* Déclaration opaque de struct jpeg */
+struct jpeg;
 
 /*
     Indique si l'image est de type couleur ou en niveaux de gris
