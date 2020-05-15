@@ -38,7 +38,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	bool sample_flag = false;
 
 	/* jpeg struct containing all the data extracted */
-	struct jpeg *infos = jpeg_create();
+	struct jpeg *jpeg = jpeg_create();
 	uint8_t sampling_factors[] = {1, 1, 1, 1, 1, 1};
 
 	for (int32_t i = 1; i < argc - 1; i++) {
@@ -54,7 +54,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 				printf("Output filename \'%s\' should have \'.jpg\' extension.\n", output_filename);
 				return NULL;
 			}
-			jpeg_set_jpeg_filename(infos, output_filename);
+			jpeg_set_jpeg_filename(jpeg, output_filename);
 			outfile_flag = true;
 		}
 
@@ -121,7 +121,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	uint8_t factor_index = 0;
 	for (uint8_t color = 0; color != NB_COLOR_COMPONENTS; color++) {
 		for (uint8_t direction = 0; direction != NB_DIRECTIONS; direction++) {
-			jpeg_set_sampling_factor(infos, (enum color_component)color, (enum direction)direction, sampling_factors[factor_index]);
+			jpeg_set_sampling_factor(jpeg, (enum color_component)color, (enum direction)direction, sampling_factors[factor_index]);
 			factor_index++;
 		}
 		factor_index++;
@@ -151,11 +151,11 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		return NULL;
 	}
 	/* Writing input filename to the jpeg struct */
-	jpeg_set_ppm_filename(infos, input_filename);
+	jpeg_set_ppm_filename(jpeg, input_filename);
 
 	/* Checking file header and extracing image dimensions */
 	if (fgetc(image) != 'P') {
-		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		printf("Input file \'%s\' is not correctly encoded. (Wrong magic number)\n", input_filename);
 		return NULL;
 	}
 	if (fgetc(image) != '5' + (type == PPM)) {
@@ -163,13 +163,13 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		return NULL;
 	}
 	if (!isspace(fgetc(image))) {
-		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		printf("Input file \'%s\' is not correctly encoded. (No spacing character found after magic number)\n", input_filename);
 		return NULL;
 	}
 	uint32_t width = 0;
 	char digit = fgetc(image);
 	if (!isdigit(digit)) {
-		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		printf("Input file \'%s\' is not correctly encoded. (Wrong width)\n", input_filename);
 		return NULL;
 	}
 	while (isdigit(digit)) {
@@ -178,13 +178,13 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		digit = fgetc(image);
 	}
 	if (!isspace(digit)) {
-		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		printf("Input file \'%s\' is not correctly encoded. (No spacing character found after width)\n", input_filename);
 		return NULL;
 	}
 	uint32_t height = 0;
 	digit = fgetc(image);
 	if (!isdigit(digit)) {
-		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		printf("Input file \'%s\' is not correctly encoded. (Wrong height)\n", input_filename);
 		return NULL;
 	}
 	while (isdigit(digit)) {
@@ -193,13 +193,13 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		digit = fgetc(image);
 	}
 	if (!isspace(digit)) {
-		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		printf("Input file \'%s\' is not correctly encoded. (No spacing character found after height)\n", input_filename);
 		return NULL;
 	}
 	uint32_t max = 0;
 	digit = fgetc(image);
 	if (!isdigit(digit)) {
-		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+		printf("Input file \'%s\' is not correctly encoded. (Wrong maximum color value)\n", input_filename);
 		return NULL;
 	}
 	while (isdigit(digit)) {
@@ -211,15 +211,15 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		printf("This JPEG encoder ony support input files with 256 shades per color (maximum value of 255).\n");
 		return NULL;
 	}
-	if (!isspace(fgetc(image))) {
-		printf("Input file \'%s\' is not correctly encoded.\n", input_filename);
+	if (!isspace(digit)) {
+		printf("Input file \'%s\' is not correctly encoded. (No spacing character found after maximum color value)\n", input_filename);
 		return NULL;
 	}
 	fclose(image);
 	/* Writing image dimensions and number of colors in the jpeg struct */
-	jpeg_set_nb_components(infos, 1 + 2 * (type == PPM));
-	jpeg_set_image_width(infos, width);
-	jpeg_set_image_height(infos, height);
+	jpeg_set_nb_components(jpeg, 1 + 2 * (type == PPM));
+	jpeg_set_image_width(jpeg, width);
+	jpeg_set_image_height(jpeg, height);
 
 
 	/* Writing default output filename to the jpeg struct if hasn't been specified */
@@ -227,8 +227,8 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		char output_filename[name_length + 1];
 		strcpy(output_filename, input_filename);
 		strcpy(&output_filename[name_length - 3], "jpg");
-		jpeg_set_jpeg_filename(infos, output_filename);
+		jpeg_set_jpeg_filename(jpeg, output_filename);
 	}
 
-	return infos;
+	return jpeg;
 }

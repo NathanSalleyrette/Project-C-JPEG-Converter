@@ -9,9 +9,8 @@
     Indique si l'image est de type couleur ou en niveaux de gris
 */
 enum color_type {
-    COLOR,
-    GREY,
-    NB_COLOR_TYPE
+    COLOR = 3,
+    GREY = 1
 };
 
 /*
