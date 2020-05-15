@@ -14,6 +14,12 @@ SRC_FILES=$(wildcard src/*.c)
 # Par défaut, la compilation de src/toto.c génère le fichier objet obj/toto.o
 OBJ_FILES=$(patsubst src/%.c,obj/%.o,$(SRC_FILES))
 
+# Tous les fichiers objets sauf l'objet contenant le main
+OBJ_FILES_NO_MAIN=$(filter-out obj/main.o, $(OBJ_FILES))
+
+# Tous les fichiers executables créés par make test
+TEST_EXEC=$(patsubst test/%.c,bin/test_%,$(wildcard test/*.c))
+
 # Fichiers objet "prof". Lorsque vous aurez implémenté un de ces modules, il
 # faudra le retirer de cette liste pour lier ppm2jpeg à votre implémentation du
 # module en question. Le module htables_prof.o, qui contient la déclaration des tables
@@ -27,6 +33,14 @@ all: ppm2jpeg
 
 ppm2jpeg: $(OBJ_FILES) $(OBJ_PROF_FILES)
 	$(LD) $(OBJ_FILES) $(OBJ_PROF_FILES) -o $@ $(LDFLAGS)
+
+test : $(TEST_EXEC)
+
+bin/test_% : obj/test_%.o $(OBJ_FILES_NO_MAIN) $(OBJ_PROF_FILES)
+	$(LD) $^ -o $@ $(LDFLAGS)
+
+obj/test_%.o : test/%.c
+	$(CC) -c $(CFLAGS) $< -o $@
 
 obj/%.o: src/%.c
 	$(CC) -c $(CFLAGS) $< -o $@
