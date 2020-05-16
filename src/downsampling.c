@@ -70,7 +70,7 @@ void downsample(struct jpeg* jpg, struct array_mcu* mcus)
                     }
                 }
             }
-            mcus->data[canal] = realloc(mcus->data[canal],sizeof(mcus->data[canal])/(factor[0]*factor[1]*factor[2]*factor[3]));
+            mcus->data[canal] = realloc(mcus->data[canal], sizeof(int16_t)*mcus->height*mcus->width*mcus->sf[2*canal]*mcus->sf[2*canal+1]*64);
             free(factor);
         }
     }
