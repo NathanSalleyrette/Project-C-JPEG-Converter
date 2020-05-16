@@ -166,117 +166,8 @@ struct huffman *get_huffman_from_freq(uint32_t *frequences, uint8_t n)
     free(arbres);
 
     huff->n_symboles = n_non_nul;
+    huff->n_max = n;
     return huff;
-}
-
-/*
-    Retourne la magnitude de l'element
-*/
-uint8_t magnitude(int16_t element)
-{
-    uint16_t absolu = abs(element);
-    uint8_t compteur = 0;
-    while (absolu) {
-        ++compteur;
-        absolu >>= 1;
-    }
-    return compteur;
-}
-
-uint16_t indice(int16_t element, uint8_t magnitude)
-{
-    if (element >= 0) {
-        return element;
-    } else {
-        return (1 << magnitude) - 1 + element;
-    }
-}
-
-/*
-    Voir description dans huffman.h
-*/
-struct huffman **get_huffman_from_mcu(struct array_mcu *mcu)
-{
-    /* On initialise le retour */
-    struct huffman **retour;
-    if (mcu->ct == COLOR) {
-        retour = malloc(4*sizeof(struct huffman *));
-    } else {
-        retour = malloc(2*sizeof(struct huffman *));
-    }
-    /* On compte pour Y les fréquences des magnitudes AC et DC */
-    uint32_t *DC_Y_freq = (uint32_t *)calloc(12, sizeof(uint32_t));
-    uint32_t *AC_Y_freq = (uint32_t *)calloc(11, sizeof(uint32_t));
-
-    /* Nombre d'éléments de data[0] (canal Y) */
-    size_t n_elem_Y = mcu->width*mcu->height*mcu->sf[0]*mcu->sf[1]*64;
-    for (size_t i_bloc = 0; i_bloc < n_elem_Y; i_bloc += 64) {
-        /* La composante DC du bloc */
-        ++DC_Y_freq[magnitude(mcu->data[0][i_bloc])];
-        for (size_t i = 1; i < 64; ++i) {
-            /* Les composantes AC du bloc */
-            ++AC_Y_freq[magnitude(mcu->data[0][i_bloc + i])];
-        }
-    }
-
-    AC_Y_freq[0] = 0;
-    /* On ajoute les arbres de huffman */
-    retour[0] = get_huffman_from_freq(DC_Y_freq, 12);
-    retour[1] = get_huffman_from_freq(AC_Y_freq, 11);
-
-    free(AC_Y_freq);
-    free(DC_Y_freq);
-
-
-    if (mcu->ct == COLOR) {
-        /* On fait une array par composante pour ne pas risquer l'overflow */
-        uint32_t *DC_Cb_freq = (uint32_t *)calloc(12, sizeof(uint32_t));
-        uint32_t *AC_Cb_freq = (uint32_t *)calloc(11, sizeof(uint32_t));
-        uint32_t *DC_Cr_freq = (uint32_t *)calloc(12, sizeof(uint32_t));
-        uint32_t *AC_Cr_freq = (uint32_t *)calloc(11, sizeof(uint32_t));
-
-        /* Nombre d'éléments de data[0] (canal Y) */
-        size_t n_elem_Cb = mcu->width*mcu->height*mcu->sf[2]*mcu->sf[3]*64;
-        for (size_t i_bloc = 0; i_bloc < n_elem_Cb; i_bloc += 64) {
-            /* La composante DC du bloc */
-            ++DC_Cb_freq[magnitude(mcu->data[1][i_bloc])];
-            for (size_t i = 1; i < 64; ++i) {
-                /* Les composantes AC du bloc */
-                ++AC_Cb_freq[magnitude(mcu->data[1][i_bloc + i])];
-            }
-        }
-
-        /* Nombre d'éléments de data[0] (canal Y) */
-        size_t n_elem_Cr = mcu->width*mcu->height*mcu->sf[4]*mcu->sf[5]*64;
-        for (size_t i_bloc = 0; i_bloc < n_elem_Cr; i_bloc += 64) {
-            /* La composante DC du bloc */
-            ++DC_Cr_freq[magnitude(mcu->data[2][i_bloc])];
-            for (size_t i = 1; i < 64; ++i) {
-                /* Les composantes AC du bloc */
-                ++AC_Cr_freq[magnitude(mcu->data[2][i_bloc + i])];
-            }
-        }
-
-        /* On met tout dans Cb en divisant par deux (arrondis au superieur) */
-        for (uint8_t i = 0; i < 12; ++i) {
-            DC_Cb_freq[i] = \
-                ((DC_Cb_freq[i] + 1) >> 1) + ((DC_Cr_freq[i] + 1) >> 1);
-        }
-        for (uint8_t i = 1; i < 11; ++i) {
-            AC_Cb_freq[i] = \
-                ((AC_Cb_freq[i] + 1) >> 1) + ((AC_Cr_freq[i] + 1) >> 1);
-        }
-        free(AC_Cr_freq);
-        free(DC_Cr_freq);
-
-        AC_Cb_freq[0] = 0;
-        /* On ajoute les arbres de huffman */
-        retour[2] = get_huffman_from_freq(DC_Cb_freq, 12);
-        retour[3] = get_huffman_from_freq(AC_Cb_freq, 11);
-        free(AC_Cb_freq);
-        free(DC_Cb_freq);
-    }
-    return retour;
 }
 
 /*
@@ -296,14 +187,15 @@ void delete_huffman(struct huffman *huff)
 /*
     Voir description dans huffman.h
 */
-void description_huffman(struct huffman *huff, uint8_t n)
+void description_huffman(struct huffman *huff)
 {
+    fprintf(stderr, "%lX", (uint64_t) huff);
     printf("\nNombre de bits par symbole\n");
-    for (uint8_t i = 0; i < n; ++i) {
+    for (uint8_t i = 0; i < huff->n_max; ++i) {
         printf("%u\n", huff->nbits_par_symbole[i]);
     }
     printf("\nChemins par symbole : \n");
-    for (uint8_t i = 0; i < n; ++i) {
+    for (uint8_t i = 0; i < huff->n_max; ++i) {
         printf("%u\n", huff->chemins_par_symbole[i]);
     }
     printf("\nNombre d'éléments par étage\n");

@@ -159,14 +159,10 @@ extern uint8_t jpeg_get_sampling_factor(struct jpeg *jpg,
 
 
 /*
-    Ecrit dans la structure jpeg la table de Huffman huff_table à utiliser
-    pour encoder les données de la composante fréquentielle acdc, pour la
-    composante de couleur cc.
+    Ecrit dans la structure jpeg toutes les tables de Huffman nécessaires
+    à partir de mcu.
 */
-extern void jpeg_set_huffman_table(struct jpeg *jpg,
-                                   enum sample_type acdc,
-                                   enum color_component cc,
-                                   struct huffman *htable);
+extern void jpeg_set_huffman_table(struct jpeg *jpg, struct array_mcu *mcu);
 
 /*
     Retourne un pointeur vers la table de Huffman utilisée pour encoder

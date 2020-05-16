@@ -31,7 +31,7 @@ Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
     /* Downsampling */
     downsample(jpg, mcu);
     /* DCT */
-    dct(mcu);
+    // dct(mcu); /* MET TOUS LES COEFF À 0 */
     /* Zigzag */
     matrice_to_zigzag(mcu);
     /* Quantification */
@@ -45,12 +45,7 @@ Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
     jpeg_set_quantization_table(jpg, Y, Yquantification);
     jpeg_set_quantization_table(jpg, Cb, Cquantification);
     /* Huffman */
-    struct huffman **huff = get_huffman_from_mcu(mcu);
-    uint8_t n_ht = (mcu->ct == COLOR) ? 4 : 2;
-    for (uint8_t i = 0; i < n_ht; ++i) {
-        jpeg_set_huffman_table(jpg, i%2, i/2, huff[i]);
-    }
-    free(huff);
+    jpeg_set_huffman_table(jpg, mcu);
 
     /* Écriture des données dans l'image */
     jpeg_write_header(jpg);

@@ -9,9 +9,9 @@ struct jpeg {
     uint32_t image_height;
     uint32_t image_width;
     uint8_t nb_components;
-    uint8_t *sampling_factor; // Taille 6 (h0, v0, h1, v1, h2, v2)
-    struct huffman **huffman; // Taille 4 (Y DC, Y AC, Cb-Cr DC, Cb-Cr AC)
-    uint8_t **quantification; // Taille 2 (Y, Cb-Cr)
+    uint8_t *sampling_factor; /* Taille 6 (h0, v0, h1, v1, h2, v2) */
+    struct huffman **huffman; /* Taille 4 (Y DC, Y AC, Cb-Cr DC, Cb-Cr AC) */
+    uint8_t **quantification; /* Taille 2 (Y, Cb-Cr) */
 };
 
 /***********************************************/
@@ -54,6 +54,31 @@ extern void jpeg_destroy(struct jpeg *jpg)
     free(jpg);
 }
 
+
+/*
+    Retourne la magnitude de l'element
+*/
+uint8_t magnitude(int16_t element)
+{
+    uint16_t absolu = abs(element);
+    uint8_t compteur = 0;
+    while (absolu) {
+        ++compteur;
+        absolu >>= 1;
+    }
+    return compteur;
+}
+
+uint16_t indice(int16_t element, uint8_t magnitude)
+{
+    if (element >= 0) {
+        return element;
+    } else {
+        return (1 << magnitude) - 1 + element;
+    }
+}
+
+
 /*
     Ecrit tout l'en-tête JPEG dans le fichier de sortie à partir des
     informations contenues dans la structure jpeg passée en paramètre.
@@ -64,6 +89,10 @@ extern void jpeg_write_header(struct jpeg *jpg)
 {
     /* SOI */
     bitstream_write_bits(jpg->bitstream, 0xffd8, 16, true);
+
+
+    /* APP0 */
+    bitstream_write_bits(jpg->bitstream, 0xffe0, 16, true);
     /* Taille : 16 octets */
     bitstream_write_bits(jpg->bitstream, 16, 16, false);
     /* "JFIF" */
@@ -180,23 +209,44 @@ void jpeg_write_body(struct jpeg *jpg, struct array_mcu *mcu)
 {
     /* On compte le nombre de mcu et le nombre de blocs par composante */
     size_t n_mcu =  mcu->height*mcu->width;
+    /* Pas besoin de recalculer n_bloc à chaque tour de boucle */
     uint8_t *n_bloc = malloc(mcu->ct*sizeof(uint8_t));
     for (uint8_t canal = 0; canal < mcu->ct; ++canal) {
         n_bloc[canal] = mcu->sf[2*canal]*mcu->sf[2*canal+1];
     }
 
+    description_huffman(jpg->huffman[0]);
+    description_huffman(jpg->huffman[1]);
+    if (mcu->ct == COLOR) {
+        description_huffman(jpg->huffman[2]);
+        description_huffman(jpg->huffman[3]);
+    }
+
+
     /* On parcours l'image dans l'ordre défini */
     for (size_t i_mcu = 0; i_mcu < n_mcu; ++i_mcu) {
         for (uint8_t canal = 0; canal < mcu->ct; ++canal) {
+            struct huffman *huffDC = jpg->huffman[(canal == Y) ? 0 : 2];
+            struct huffman *huffAC = jpg->huffman[(canal == Y) ? 1 : 3];
             for (size_t i_bloc = 0; i_bloc < n_bloc[canal]; ++i_bloc) {
                 /* Écriture d'une composante DC */
                 size_t i_debut_bloc = (i_mcu*n_bloc[canal] + i_bloc)*64;
-                int16_t coeffDC = mcu->data[canal][i_debut_bloc];
+
+
+                int16_t coeffDC = mcu->data[canal][i_debut_bloc] -
+                    ((i_debut_bloc == 0) ? 0 : mcu->data[canal][i_debut_bloc-64]);
                 uint8_t magnitudeDC = magnitude(coeffDC);
                 uint16_t indiceDC = indice(coeffDC, magnitudeDC);
 
-                /* TODO Ici : création de Huffman DC */
                 /* Huffman de la magnitude + indice */
+                bitstream_write_bits(jpg->bitstream,
+                                     huffDC->chemins_par_symbole[magnitudeDC],
+                                     huffDC->nbits_par_symbole[magnitudeDC],
+                                     false);
+                bitstream_write_bits(jpg->bitstream,
+                                     indiceDC,
+                                     magnitudeDC,
+                                     false);
 
                 /* Écriture des composantes AC */
                 uint8_t i = 0;
@@ -206,21 +256,29 @@ void jpeg_write_body(struct jpeg *jpg, struct array_mcu *mcu)
                         ++i;
                         ++n_nuls;
                     }
-                    if (i >= 64 && n_nuls != 0) {
-                        /* EOB */
-                        0x00;
+                    if (i >= 64) {
+                        /* EOB 0x00 */
+                        bitstream_write_bits(jpg->bitstream, 0x00, 8, false);
                     } else if (n_nuls >= 16) {
-                        /* ZRL */
-                        0xF0;
+                        /* ZRL 0xF0 */
+                        bitstream_write_bits(jpg->bitstream, 0xF0, 8, false);
                     } else {
                         /* RLE normal */
-                        int16_t coeffAC = mcu->data[canal][i_debut_bloc + i];
+                        int16_t coeffAC = mcu->data[canal][i_debut_bloc+i];
                         uint8_t magnitudeAC = magnitude(coeffAC);
-                        int16_t indiceAC = indice(coeffAC, magnitudeAC);
+                        uint16_t indiceAC = indice(coeffAC, magnitudeAC);
 
-                        /* TODO Ici : création de Huffman AC */
-                        /* Huffman du RLE + indice (si != EOB ou ZRL) */
-
+                        /* Huffman du symbole RLE + indice */
+                        uint8_t symbole = magnitudeAC | (n_nuls << 4);
+                        bitstream_write_bits(jpg->bitstream,
+                                             huffAC->chemins_par_symbole[symbole],
+                                             huffAC->nbits_par_symbole[symbole],
+                                             false);
+                        bitstream_write_bits(jpg->bitstream,
+                                             indiceAC,
+                                             magnitudeAC,
+                                             false);
+                        ++i;
                     }
                 }
             }
@@ -234,6 +292,7 @@ void jpeg_write_body(struct jpeg *jpg, struct array_mcu *mcu)
 extern void jpeg_write_footer(struct jpeg *jpg)
 {
     /* EOI */
+    bitstream_flush(jpg->bitstream);
     bitstream_write_bits(jpg->bitstream, 0xffd9, 16, true);
 }
 
@@ -365,16 +424,91 @@ extern uint8_t jpeg_get_sampling_factor(struct jpeg *jpg,
 
 
 /*
-    Ecrit dans la structure jpeg la table de Huffman huff_table à utiliser
-    pour encoder les données de la composante fréquentielle acdc, pour la
-    composante de couleur cc.
+    Ecrit dans la structure jpeg toutes les tables de Huffman nécessaires
+    à partir de mcu.
 */
-extern void jpeg_set_huffman_table(struct jpeg *jpg,
-                                   enum sample_type acdc,
-                                   enum color_component cc,
-                                   struct huffman *htable)
+extern void jpeg_set_huffman_table(struct jpeg *jpg, struct array_mcu *mcu)
 {
-    jpg->huffman[acdc + ((cc == Y )? 0 : 2)] = htable;
+    /* Les symboles DC vont de 0 à 11, donc tableau de taille 12
+     * Les symboles AC vont de 0x00 à 0xFA (avec des trous au milieu), on fait
+     * donc un tableau de taille 251 */
+    uint32_t **frequences_DC = malloc(mcu->ct*sizeof(uint32_t *));
+    uint32_t **frequences_AC = malloc(mcu->ct*sizeof(uint32_t *));
+    for (uint8_t i = 0; i < mcu->ct; ++i) {
+        frequences_DC[i] = calloc(12, sizeof(uint32_t));
+        frequences_AC[i] = calloc(251, sizeof(uint32_t));
+    }
+
+    /* On parcours l'image dans l'ordre défini */
+    for (uint8_t canal = 0; canal < mcu->ct; ++canal) {
+        size_t n_elem = mcu->height*mcu->width*mcu->sf[2*canal]*mcu->sf[2*canal+1]*64;
+        for (size_t i_chunk = 0; i_chunk < n_elem; i_chunk += 64) {
+
+            /* Composante DC*/
+            int16_t coeffDC = mcu->data[canal][i_chunk] - ((i_chunk == 0) ? 0 : mcu->data[canal][i_chunk-64]);
+            uint8_t magnitudeDC = magnitude(coeffDC);
+            if (magnitudeDC > 11) {
+                fprintf(stderr, "Erreur de magnitude DC dans jpeg_set_huffman_table : coeff = %i, magnitude = %u\n", mcu->data[canal][i_chunk], magnitudeDC);
+            }
+            ++frequences_DC[canal][magnitudeDC];
+
+
+            /* Composantes AC */
+            uint8_t magnitudeAC;
+            uint8_t i = 1;
+            while (i < 64) {
+                uint8_t n_nuls = 0;
+                while (i < 64 && n_nuls < 16 && mcu->data[canal][i_chunk + i] == 0) {
+                    ++i;
+                    ++n_nuls;
+                }
+                if (i >= 64) {
+                    /* EOB 0x00 */
+                    n_nuls = 0;
+                    magnitudeAC = 0;
+                } else if (n_nuls >= 16) {
+                    /* ZRL 0xF0 */
+                    n_nuls = 15;
+                    magnitudeAC = 0;
+                } else {
+                    /* RLE normal */
+                    magnitudeAC = magnitude(mcu->data[canal][i_chunk + i]);
+                    ++i;
+                }
+
+
+                if (magnitudeAC > 10) {
+                    fprintf(stderr, "Erreur de magnitude AC dans jpeg_set_huffman_table : coeff = %i, magnitude = %u\n", mcu->data[canal][i_chunk + i], magnitudeAC);
+                }
+
+                uint8_t symbole = magnitudeAC | (n_nuls << 4);
+                ++frequences_AC[canal][symbole];
+            }
+
+        }
+    }
+
+    jpg->huffman[0] = get_huffman_from_freq(frequences_DC[0], 12);
+    jpg->huffman[1] = get_huffman_from_freq(frequences_AC[0], 251);
+
+    if (mcu->ct == COLOR) {
+        for (uint8_t i = 0; i < 251; ++i) {
+            /* Taille maximale 65535 x 65535 risque d'overflow les uint32_t
+            * si on additionnes simplement les frequences_AC de Cb et Cr
+            * Le +1 sert à ne pas supprimer les symboles de fréquence 1 */
+            frequences_AC[1][i] = ((frequences_AC[1][i] + 1) >> 1) + ((frequences_AC[2][i] + 1) >> 1);
+        }
+        jpg->huffman[2] = get_huffman_from_freq(frequences_DC[1], 12);
+        jpg->huffman[3] = get_huffman_from_freq(frequences_AC[1], 251);
+    }
+
+    for (uint8_t i = 0; i < mcu->ct; ++i) {
+        free(frequences_DC[i]);
+        free(frequences_AC[i]);
+    }
+    free(frequences_DC);
+    free(frequences_AC);
+
 }
 
 /*

@@ -14,6 +14,7 @@ struct huffman {
                                     * chemin dans les poids faible */
     uint8_t *nbits_par_symbole; /* array de taille magnitude_max + 1
                                  * correspond aux nombre de bits des chemins */
+    uint8_t n_max;
 
     /* Utile pour l'écriture dans le jpeg */
     uint8_t *n_par_etage; /* array de taille 16 */
@@ -22,30 +23,12 @@ struct huffman {
 };
 
 /*
-    Retourne la magnitude de l'element
-*/
-extern uint8_t magnitude(int16_t element);
-
-/*
-    Retourne l'indice de l'élément à partir de sa magnitude
-*/
-extern uint16_t indice(int16_t element, uint8_t magnitude);
-
-/*
     Renvoie une structure huffman en fonction des fréquences
     absolues en argument.
     Ne prends pas en commpte les fréquences nulles et ne créé pas de chemin
     uniquement composé de '1'.
 */
 extern struct huffman *get_huffman_from_freq(uint32_t *frequences, uint8_t n);
-
-/*
-    Renvoie une array 2 pointeurs vers struct huffman si l'image est en niveaux
-    de gris ou 4 pointeurs vers struct huffman si l'image est en couleurs
-    dans l'ordre suivant : (Y DC, Y AC) ou (Y DC, Y AC, Cb-Cr DC, Cb-Cr AC)
-    Ces struct huffman servent au codage des magnitudes
-*/
-extern struct huffman **get_huffman_from_mcu(struct array_mcu *mcu);
 
 /*
     Destruction et libération de la mémoire liée à huff
@@ -57,6 +40,6 @@ extern void delete_huffman(struct huffman *huff);
     L'argument est n est la valeur passée en argument à la création par
     get_huffman_from_freq (12 pour DC, 11 pour AC)
 */
-extern void description_huffman(struct huffman *huff, uint8_t n);
+extern void description_huffman(struct huffman *huff);
 
 #endif /* HUFFMAN_H */
