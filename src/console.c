@@ -47,6 +47,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		if (!strncmp(argv[i], "--outfile=", 10)) {
 			if (outfile_flag) {
 				printf("\'--outfile\' option should only be called once.\n");
+				return NULL;
 			}
 			char *output_filename = &argv[i][10];
 			size_t name_length = strlen(output_filename);
@@ -64,7 +65,8 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 				printf("\'--sample\' option should only be called once.\n");
 				return NULL;
 			}
-			uint8_t sampling_factors[] = {0, 0, 0, 0, 0, 0};
+			for (uint8_t factor_index = 0; factor_index < 6; factor_index++)
+				sampling_factors[factor_index] = 0;
 			uint32_t j = 8;
 			uint8_t factor_index = 0;
 

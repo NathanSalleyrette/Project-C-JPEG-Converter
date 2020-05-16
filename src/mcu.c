@@ -37,15 +37,19 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 	}
 	/* Reading all pixels and writing them into mcu->data in the right order */
 	for (uint32_t y_mcu = 0; y_mcu < mcus->height; y_mcu++) {
-		for (uint32_t y_pixel = 0; y_pixel < mcu_pixel_height; y_pixel++) {
-			for (uint32_t x_mcu = 0; x_mcu < mcus->width; x_mcu++) {
-				for (uint32_t x_pixel = 0; x_pixel < mcu_pixel_width; x_pixel++) {
-					for (uint8_t component = 0; component < mcus->ct; component++) {
-						if (feof(image)) {
-							printf("Input file \'%s\' is not correctly encoded. (Less values encountered than expected)\n", jpeg_get_ppm_filename(jpeg));
-							return NULL;
+		for (uint8_t y_block = 0; y_block < mcus->sf[1]; y_block++) {
+			for (uint32_t y_pixel = 0; y_pixel < 8; y_pixel++) {
+				for (uint32_t x_mcu = 0; x_mcu < mcus->width; x_mcu++) {
+					for (uint8_t x_block = 0; x_block < mcus->sf[0]; x_block++) {
+						for (uint32_t x_pixel = 0; x_pixel < 8; x_pixel++) {
+							for (uint8_t component = 0; component < mcus->ct; component++) {
+								if (feof(image)) {
+									printf("Input file \'%s\' is not correctly encoded. (Less values encountered than expected)\n", jpeg_get_ppm_filename(jpeg));
+									return NULL;
+								}
+								mcus->data[component][pixel_per_mcu * (x_mcu + mcus->width * y_mcu) + 64 * (x_block + mcus->sf[0] * y_block) + x_pixel + 8 * y_pixel] = (uint16_t) fgetc(image);
+							}
 						}
-						mcus->data[component][pixel_per_mcu * (x_mcu + mcus->width * y_mcu) + x_pixel + mcu_pixel_width * y_pixel] = (uint16_t) fgetc(image);
 					}
 
 				}
@@ -56,6 +60,12 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 	if (!feof(image)) {
 		printf("Input file \'%s\' is not correctly encoded. (More values encountered than expected)\n", jpeg_get_ppm_filename(jpeg));
 		return NULL;
+	}
+	for (uint8_t c = 0; c < mcus->ct; c++) {
+		for (uint32_t i = 0; i < pixel_per_mcu * mcus->height * mcus->width; i++) {
+			printf("%x ", mcus->data[c][i]);
+		}
+		printf("\n\n");
 	}
 	fclose(image);
 	return mcus;
