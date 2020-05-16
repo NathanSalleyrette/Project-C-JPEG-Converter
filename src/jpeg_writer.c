@@ -169,7 +169,7 @@ extern void jpeg_write_header(struct jpeg *jpg)
             /* DC ou AC */
             bitstream_write_bits(jpg->bitstream, i%2, 4, false);
             /* Indice de la table */
-            bitstream_write_bits(jpg->bitstream, i, 4, false);
+            bitstream_write_bits(jpg->bitstream, i/2, 4, false);
             /* Nombre de symboles par longueur */
             for (uint8_t k = 0; k < 16; ++k) {
                 bitstream_write_bits(jpg->bitstream, jpg->huffman[i]->n_par_etage[k], 8, false);
@@ -193,8 +193,8 @@ extern void jpeg_write_header(struct jpeg *jpg)
     /* Associations de tables par composante */
     for (uint8_t i = 0; i < jpg->nb_components; ++i) {
         bitstream_write_bits(jpg->bitstream, i, 8, false);
-        bitstream_write_bits(jpg->bitstream, (i == 0) ? 0 : 2, 4, false);
-        bitstream_write_bits(jpg->bitstream, (i == 0) ? 1 : 3, 4, false);
+        bitstream_write_bits(jpg->bitstream, (i == 0) ? 0 : 1, 4, false);
+        bitstream_write_bits(jpg->bitstream, (i == 0) ? 0 : 1, 4, false);
     }
     /* Premier indice de la sélection spectrale */
     bitstream_write_bits(jpg->bitstream, 0, 8, false);
@@ -213,13 +213,6 @@ void jpeg_write_body(struct jpeg *jpg, struct array_mcu *mcu)
     uint8_t *n_bloc = malloc(mcu->ct*sizeof(uint8_t));
     for (uint8_t canal = 0; canal < mcu->ct; ++canal) {
         n_bloc[canal] = mcu->sf[2*canal]*mcu->sf[2*canal+1];
-    }
-
-    description_huffman(jpg->huffman[0]);
-    description_huffman(jpg->huffman[1]);
-    if (mcu->ct == COLOR) {
-        description_huffman(jpg->huffman[2]);
-        description_huffman(jpg->huffman[3]);
     }
 
 
@@ -473,13 +466,13 @@ extern void jpeg_set_huffman_table(struct jpeg *jpg, struct array_mcu *mcu)
                 } else {
                     /* RLE normal */
                     magnitudeAC = magnitude(mcu->data[canal][i_chunk + i]);
+                    if (magnitudeAC > 10 || magnitudeAC == 0) {
+                        fprintf(stderr, "Erreur de magnitude AC dans jpeg_set_huffman_table : coeff = %i, magnitude = %u\n", mcu->data[canal][i_chunk + i], magnitudeAC);
+                    }
                     ++i;
                 }
 
 
-                if (magnitudeAC > 10) {
-                    fprintf(stderr, "Erreur de magnitude AC dans jpeg_set_huffman_table : coeff = %i, magnitude = %u\n", mcu->data[canal][i_chunk + i], magnitudeAC);
-                }
 
                 uint8_t symbole = magnitudeAC | (n_nuls << 4);
                 ++frequences_AC[canal][symbole];
