@@ -40,7 +40,10 @@ extern struct jpeg *jpeg_create(void)
 */
 extern void jpeg_destroy(struct jpeg *jpg)
 {
-    bitstream_destroy(jpg->bitstream);
+    if (jpg->bitstream != NULL) {
+        bitstream_flush(jpg->bitstream);
+        bitstream_destroy(jpg->bitstream);
+    }
     free(jpg->sampling_factor);
     for (size_t i = 0; i < 4; ++i)
         delete_huffman(jpg->huffman[i]);
@@ -85,7 +88,7 @@ extern void jpeg_write_header(struct jpeg *jpg)
     for (uint8_t i = 0; i < n_qtb; ++i) {
         if (jpg->quantification[i] != NULL) {
             /* DQT */
-            bitstream_write_bits(jpg->bitstream, 0xffd8, 16, true);
+            bitstream_write_bits(jpg->bitstream, 0xffdb, 16, true);
             /* Taille : 67 octets */
             bitstream_write_bits(jpg->bitstream, 67, 16, false);
             /* Precision : 8 bits et iq : i */
@@ -172,6 +175,61 @@ extern void jpeg_write_header(struct jpeg *jpg)
     bitstream_write_bits(jpg->bitstream, 0, 8, false);
 }
 
+/* Écrit les données brutes dans l'image */
+void jpeg_write_body(struct jpeg *jpg, struct array_mcu *mcu)
+{
+    /* On compte le nombre de mcu et le nombre de blocs par composante */
+    size_t n_mcu =  mcu->height*mcu->width;
+    uint8_t *n_bloc = malloc(mcu->ct*sizeof(uint8_t));
+    for (uint8_t canal = 0; canal < mcu->ct; ++canal) {
+        n_bloc[canal] = mcu->sf[2*canal]*mcu->sf[2*canal+1];
+    }
+
+    /* On parcours l'image dans l'ordre défini */
+    for (size_t i_mcu = 0; i_mcu < n_mcu; ++i_mcu) {
+        for (uint8_t canal = 0; canal < mcu->ct; ++canal) {
+            for (size_t i_bloc = 0; i_bloc < n_bloc[canal]; ++i_bloc) {
+                /* Écriture d'une composante DC */
+                size_t i_debut_bloc = (i_mcu*n_bloc[canal] + i_bloc)*64;
+                int16_t coeffDC = mcu->data[canal][i_debut_bloc];
+                uint8_t magnitudeDC = magnitude(coeffDC);
+                uint16_t indiceDC = indice(coeffDC, magnitudeDC);
+
+                /* TODO Ici : création de Huffman DC */
+                /* Huffman de la magnitude + indice */
+
+                /* Écriture des composantes AC */
+                uint8_t i = 0;
+                while (i < 64) {
+                    uint8_t n_nuls = 0;
+                    while (i < 64 && n_nuls < 16 && mcu->data[canal][i_debut_bloc + i] == 0) {
+                        ++i;
+                        ++n_nuls;
+                    }
+                    if (i >= 64 && n_nuls != 0) {
+                        /* EOB */
+                        0x00;
+                    } else if (n_nuls >= 16) {
+                        /* ZRL */
+                        0xF0;
+                    } else {
+                        /* RLE normal */
+                        int16_t coeffAC = mcu->data[canal][i_debut_bloc + i];
+                        uint8_t magnitudeAC = magnitude(coeffAC);
+                        int16_t indiceAC = indice(coeffAC, magnitudeAC);
+
+                        /* TODO Ici : création de Huffman AC */
+                        /* Huffman du RLE + indice (si != EOB ou ZRL) */
+
+                    }
+                }
+            }
+        }
+    }
+
+    free(n_bloc);
+}
+
 /* Ecrit le footer JPEG (marqueur EOI) dans le fichier de sortie. */
 extern void jpeg_write_footer(struct jpeg *jpg)
 {
@@ -210,7 +268,8 @@ extern const char *jpeg_get_ppm_filename(struct jpeg *jpg)
 extern void jpeg_set_jpeg_filename(struct jpeg *jpg,
                                    const char *jpeg_filename)
 {
-    bitstream_destroy(jpg->bitstream);
+    if (jpg->bitstream != NULL)
+        bitstream_destroy(jpg->bitstream);
     jpg->jpeg_filename = jpeg_filename;
     jpg->bitstream = bitstream_create(jpeg_filename);
 }

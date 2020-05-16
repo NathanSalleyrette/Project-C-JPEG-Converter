@@ -28,7 +28,15 @@ void dct_bloc(struct array_mcu *mcus, size_t canal, size_t i_mcu, size_t i_bloc,
     // offset
     for (int x=0; x<8; x++){
         for (int y=0; y<8; y++){
+
+
+
+            /* Erreur ici : mcus->data[canal][(i_mcu*h*v + i_bloc)*64 + x + 8*y]
+             * est en dehors des dimensions de mcus->data[canal] */
             mcus->data[canal][(i_mcu*h*v + i_bloc)*64 + x + 8*y] -= 128;
+
+
+
         }
     }
     int16_t *bloc_frequentiel = malloc(64*sizeof(int16_t));
@@ -47,7 +55,7 @@ void dct_bloc(struct array_mcu *mcus, size_t canal, size_t i_mcu, size_t i_bloc,
 
 void dct(struct array_mcu *mcus)
 {
-    for (size_t canal=0; canal<3; canal ++) {
+    for (size_t canal=0; canal<mcus->ct; canal ++) {
         uint8_t h = mcus->sf[2*canal];
         uint8_t v = mcus->sf[2*canal + 1];
         for (size_t i_mcu=0; i_mcu < mcus->height*mcus->width; i_mcu ++) {

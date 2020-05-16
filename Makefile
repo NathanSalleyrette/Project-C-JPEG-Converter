@@ -27,8 +27,7 @@ EMPTY_DIR=obj bin
 # faudra le retirer de cette liste pour lier ppm2jpeg à votre implémentation du
 # module en question. Le module htables_prof.o, qui contient la déclaration des tables
 # de Huffman génériques sous forme de constantes, n'est pas à ré-implémenter.
-OBJ_PROF_FILES = obj_prof/huffman_prof.o     \
-				 obj_prof/bitstream_prof.o   \
+OBJ_PROF_FILES = obj_prof/bitstream_prof.o   \
 				 obj_prof/htables_prof.o
 
 all: creer_dossiers ppm2jpeg

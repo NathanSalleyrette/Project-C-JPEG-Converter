@@ -183,6 +183,15 @@ uint8_t magnitude(int16_t element)
     return compteur;
 }
 
+uint16_t indice(int16_t element, uint8_t magnitude)
+{
+    if (element >= 0) {
+        return element;
+    } else {
+        return (1 << magnitude) - 1 + element;
+    }
+}
+
 /*
     Voir description dans huffman.h
 */
@@ -275,6 +284,8 @@ struct huffman **get_huffman_from_mcu(struct array_mcu *mcu)
 */
 void delete_huffman(struct huffman *huff)
 {
+    if (huff == NULL)
+        return;
     free(huff->chemins_par_symbole);
     free(huff->nbits_par_symbole);
     free(huff->n_par_etage);

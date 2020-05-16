@@ -22,6 +22,16 @@ struct huffman {
 };
 
 /*
+    Retourne la magnitude de l'element
+*/
+extern uint8_t magnitude(int16_t element);
+
+/*
+    Retourne l'indice de l'élément à partir de sa magnitude
+*/
+extern uint16_t indice(int16_t element, uint8_t magnitude);
+
+/*
     Renvoie une structure huffman en fonction des fréquences
     absolues en argument.
     Ne prends pas en commpte les fréquences nulles et ne créé pas de chemin

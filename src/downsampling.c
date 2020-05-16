@@ -35,15 +35,15 @@ void downsample(struct jpeg* jpg, struct array_mcu* mcus)
         //mise à jour de sf et récupération des facteurs d'échantillonnage
         uint8_t* factor = set_sf(jpg, mcus);
         // pour Cb puis Cr
-        for (int canal=1; canal<3; canal ++){
+        for (uint8_t canal=1; canal < 2; canal ++){
             uint8_t h = mcus->sf[2*canal];
             uint8_t v = mcus->sf[2*canal+1];
             // pour chaque MCU
             for (size_t i_mcu=0; i_mcu<mcus->height*mcus->width; i_mcu++) {
                 // hauteur puis largeur
-                for (int dimension=0; dimension<2; dimension++) {
-                    for (int i_classe=0; i_classe < factor[canal+dimension]*mcus->sf[1-dimension]; i_classe ++) {
-                        for (int i=0; i<2; i++) {
+                for (int dimension = 0; dimension < 2; dimension++) {
+                    for (int i_classe = 0; i_classe < factor[canal+dimension]*mcus->sf[1-dimension]; i_classe++) {
+                        for (int i = 0; i < 2; i++) {
                             // moyenne sur chaque coefficient par groupe
                             int16_t moyenne = 0;
                             // l'indice des bloc est incrémenté de 1 dans le
@@ -57,7 +57,15 @@ void downsample(struct jpeg* jpg, struct array_mcu* mcus)
                             moyenne = moyenne/factor[canal+dimension];
                             // on attribue ensuite la moyenne au bloc correspondant à la simplification,
                             // à savoir le i_classe ième
+
+
+                            /* Erreur ici : mcus->data[canal][(i_mcu*h*v + i_classe)*2 + i]
+                             * est en dehors des dimensions de mcus->data[canal] */
                             mcus->data[canal][(i_mcu*h*v + i_classe)*2 + i] = moyenne;
+
+
+
+
                         }
                     }
                 }

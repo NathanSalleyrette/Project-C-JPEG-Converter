@@ -67,7 +67,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 			uint8_t sampling_factors[] = {0, 0, 0, 0, 0, 0};
 			uint32_t j = 8;
 			uint8_t factor_index = 0;
-			
+
 			/* Reading option and testing if syntax is valid */
 			while (argv[i][j] != '\0') {
 				j++;
@@ -124,7 +124,6 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 			jpeg_set_sampling_factor(jpeg, (enum color_component)color, (enum direction)direction, sampling_factors[factor_index]);
 			factor_index++;
 		}
-		factor_index++;
 	}
 
 	/* Checking if input file is correct */

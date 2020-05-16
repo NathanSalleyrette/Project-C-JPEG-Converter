@@ -67,6 +67,9 @@ extern void jpeg_destroy(struct jpeg *jpg);
 */
 extern void jpeg_write_header(struct jpeg *jpg);
 
+/* Écrit les données brutes dans l'image */
+extern void jpeg_write_body(struct jpeg *jpg, struct array_mcu *mcu);
+
 /* Ecrit le footer JPEG (marqueur EOI) dans le fichier de sortie. */
 extern void jpeg_write_footer(struct jpeg *jpg);
 
