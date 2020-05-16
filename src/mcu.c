@@ -61,12 +61,6 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 		printf("Input file \'%s\' is not correctly encoded. (More values encountered than expected)\n", jpeg_get_ppm_filename(jpeg));
 		return NULL;
 	}
-	for (uint8_t c = 0; c < mcus->ct; c++) {
-		for (uint32_t i = 0; i < pixel_per_mcu * mcus->height * mcus->width; i++) {
-			printf("%x ", mcus->data[c][i]);
-		}
-		printf("\n\n");
-	}
 	fclose(image);
 	return mcus;
 }
