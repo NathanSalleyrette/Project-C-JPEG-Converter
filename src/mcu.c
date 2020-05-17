@@ -5,6 +5,8 @@
 #include <jpeg_writer.h>
 #include <mcu.h>
 
+
+/* Function creating an array_mcu struct from extracting pixel data from the input file. */
 struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 {
 	struct array_mcu *mcus = malloc(sizeof(struct array_mcu));
@@ -63,4 +65,18 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 	}
 	fclose(image);
 	return mcus;
+}
+
+/* Function deleting an array_mcu struct and freeing the allocated memory. */
+void delete_mcu(struct array_mcu *mcus)
+{
+	if (mcus == NULL) {
+		return;
+	}
+	for (uint8_t component = 0; component < mcus->ct; component++) {
+		free(mcus->data[component]);
+	}
+	free(mcus->data);
+	free(mcus->sf);
+	free(mcus);
 }
