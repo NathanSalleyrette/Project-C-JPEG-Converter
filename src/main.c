@@ -106,7 +106,7 @@ Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
     jpeg_set_quantization_table(jpg, Cb, Cquantification);
 
     /* Huffman */
-    jpeg_set_huffman_table(jpg, mcu);
+    jpeg_set_huffman_table_perso(jpg, mcu);
 
     /* Écriture des données dans l'image */
     jpeg_write_header(jpg);
