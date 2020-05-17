@@ -1,6 +1,54 @@
 #include <huffman.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <htables.h>
+
+/*
+    Donne une table de huffman correspondant au AC/DC et au cc
+*/
+struct huffman *get_huffman_premade(enum sample_type st, enum color_component cc)
+{
+    uint8_t *n_par_etage = htables_nb_symb_per_lengths[st][cc];
+    uint8_t *array_symboles = htables_symbols[st][cc];
+    uint8_t n_symboles = htables_nb_symbols[st][cc];
+    uint8_t n_max = 0;
+    for (uint8_t i = 0; i < n_symboles; ++i) {
+        if (array_symboles[i] > n_max) {
+            n_max = array_symboles[i];
+        }
+    }
+
+    /* On veut la taille des vecteurs nbits_par_symbole et chemins_par_symbole */
+    ++n_max;
+
+    struct huffman *huff = (struct huffman *)malloc(sizeof(struct huffman));
+    huff->chemins_par_symbole = (uint32_t *)calloc(n_max, sizeof(uint32_t));
+    huff->nbits_par_symbole = (uint8_t *)calloc(n_max, sizeof(uint8_t));
+    huff->array_symboles = (uint8_t *)calloc(n_max, sizeof(uint8_t));
+    huff->n_par_etage = (uint8_t *)calloc(16, sizeof(uint8_t));
+    huff->n_symboles = n_symboles;
+    huff->n_max = n_max;
+
+    uint16_t chemin = 0;
+    uint8_t i_symbole = 0;
+    for (uint8_t etage = 1; etage <= 16; ++etage) {
+        for (uint8_t i = 0; i < n_par_etage[etage-1]; ++i) {
+            huff->chemins_par_symbole[array_symboles[i_symbole]] = chemin;
+            huff->nbits_par_symbole[array_symboles[i_symbole]] = etage;
+            ++i_symbole;
+            ++chemin;
+        }
+        chemin <<= 1;
+    }
+
+    for (uint8_t i = 0; i < n_symboles; ++i) {
+        huff->array_symboles[i] = array_symboles[i];
+    }
+    for (uint8_t i = 0; i < 16; ++i) {
+        huff->n_par_etage[i] = n_par_etage[i];
+    }
+    return huff;
+}
 
 
 /*
@@ -136,6 +184,9 @@ struct huffman *get_huffman_from_freq(uint32_t *frequences, uint8_t n)
         if (dpile == &marqueur) {
             /* On change d'étage */
             ++etage;
+            if (etage >= 16) {
+                fprintf(stderr, "Arbre de Huffman trop grand\n");
+            }
             prochain_chemin <<= 1;
             /* On remet le marqueur à la fin de la pile */
             dpile = marqueur.suivant;
@@ -189,16 +240,8 @@ void delete_huffman(struct huffman *huff)
 */
 void description_huffman(struct huffman *huff)
 {
-    fprintf(stderr, "%lX", (uint64_t) huff);
-    printf("\nNombre de bits par symbole\n");
-    for (uint8_t i = 0; i < huff->n_max; ++i) {
-        printf("%u\n", huff->nbits_par_symbole[i]);
-    }
-    printf("\nChemins par symbole : \n");
-    for (uint8_t i = 0; i < huff->n_max; ++i) {
-        printf("%u\n", huff->chemins_par_symbole[i]);
-    }
-    printf("\nNombre d'éléments par étage\n");
+    printf("Table de huffman\n");
+    printf("Nombre d'éléments par étage\n");
     uint8_t somme = 0;
     for (uint8_t i = 0; i < 16; ++i) {
         printf("%u\n", huff->n_par_etage[i]);

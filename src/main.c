@@ -6,11 +6,11 @@
 #include <dct.h>
 #include <zigzag.h>
 #include <huffman.h>
-#include <bitstream.h>
 
 
 /* À enlever */
 #include <math.h>
+#include <htables.h>
 #define _PI (3.1415926535898f)
 
 int main(int argc, char *argv[])
@@ -34,7 +34,8 @@ Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
     if (mcu == NULL)
         return EXIT_FAILURE;
 
-    /* Passage en Y Cb Cr en despi en attendant le module */
+    /* Conversion RGB vers YCbCr */
+    /* Conversion en despi en attendant le module */
     if (mcu->ct == COLOR) {
         size_t nelem = mcu->width*mcu->height*mcu->sf[0]*mcu->sf[1]*64;
         for (size_t i = 0; i < nelem; ++i) {
@@ -48,37 +49,39 @@ Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
     }
 
     /* Downsampling */
-    downsample(jpg, mcu);
+    // downsample(jpg, mcu);
+    /* ça foire quand on met quelque chose de différent de hxv,hxv,hxv */
 
-
-    /* DCT en despi en attendant que le module fonctionne */
+    /* DCT */
+    // dct(mcu);
+    /* ça foire donc voilà une DCT en despi en attendant que le module fonctionne */
+    float *cos_bloc = malloc(64*sizeof(float));
+    for (uint8_t x = 0; x < 8; ++x) {
+        cos_bloc[8*x] = 1/(2.f*sqrt(2));
+        for (uint8_t i = 1; i < 8; ++i) {
+            cos_bloc[i+8*x] = cos(((float)((2*x+1)*i))*_PI/16.f)/2.f;
+        }
+    }
     float *tampon = malloc(64*sizeof(float));
     for (uint8_t canal = 0; canal < mcu->ct; ++canal) {
         size_t nelem = mcu->width*mcu->height*mcu->sf[2*canal]*mcu->sf[2*canal+1]*64;
         for (size_t i_debut_bloc = 0; i_debut_bloc < nelem; i_debut_bloc += 64) {
-            /* On parcour le tampon avec les indices i et j */
+            /* On parcourt le tampon avec les indices i et j */
             for (uint8_t i = 0; i < 8; ++i) {
                 for (uint8_t j = 0; j < 8; ++j) {
+
+                    /* Calcul du coefficient i, j */
                     tampon[i+8*j] = 0.f;
-                    /* On parcour les données avec les indices x et y */
+                    /* On parcourt les données avec les indices x et y */
                     for (uint8_t x = 0; x < 8; ++x) {
                         for (uint8_t y = 0; y < 8; ++y) {
+                            /* On a intégré C(i), C(j) et 2/n dans cos_bloc */
                             tampon[i+8*j] += \
-                        (float)(mcu->data[canal][i_debut_bloc+x+8*y]-128)*\
-                        cos(((float)((2*x+1)*i))*_PI/8.0f)*\
-                        cos(((float)((2*y+1)*j))*_PI/8.0f);
+    (mcu->data[canal][i_debut_bloc+x+8*y]-128)*cos_bloc[i+8*x]*cos_bloc[j+8*y];
                         }
                     }
-                    /* On multiplie par les facteurs */
-                    if (i == 0 || j == 0) {
-                        if (i == 0 && j == 0) {
-                            tampon[i+8*j] /= 8.f;
-                        } else {
-                            tampon[i+8*j] /= 5.65685424949238019f;
-                        }
-                    } else {
-                        tampon[i+8*j] /= 4.f;
-                    }
+
+
                 }
             }
             for (uint8_t i = 0; i < 64; ++i) {
@@ -87,6 +90,7 @@ Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
         }
     }
     free(tampon);
+    free(cos_bloc);
 
     /* Zigzag */
     matrice_to_zigzag(mcu);
@@ -109,8 +113,9 @@ Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
     jpeg_write_body(jpg, mcu);
     jpeg_write_footer(jpg);
 
-    /* Mémoire vidée (manque le delete_mcu) */
+    /* Mémoire vidée */
     jpeg_destroy(jpg);
+    delete_mcu(mcu);
 
     return EXIT_SUCCESS;
 }

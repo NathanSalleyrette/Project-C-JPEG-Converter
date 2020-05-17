@@ -3,6 +3,9 @@
 
 #include <mcu.h>
 
+enum sample_type;
+enum color_component;
+
 
 /*
     Structure représentant un arbre de Huffman pour JPEG
@@ -21,6 +24,11 @@ struct huffman {
     uint8_t *array_symboles; /*array de taille sum(n_par_etage) */
     uint8_t n_symboles; /* valeur de sum(n_par_etage) */
 };
+
+/*
+    Donne une table de huffman correspondant au AC/DC et au cc
+*/
+extern struct huffman *get_huffman_premade(enum sample_type st, enum color_component cc);
 
 /*
     Renvoie une structure huffman en fonction des fréquences
