@@ -34,8 +34,10 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 
 	FILE *image = fopen(jpeg_get_ppm_filename(jpeg), "r");
 	/* Reading passed the header */
-	for (uint8_t i = 0; i < 4; i++) {
-		while (!isspace(fgetc(image)));
+	for (uint8_t i = 0; i < 3;) {
+		if (fgetc(image) != '#')
+			++i;
+		while (fgetc(image) != '\n');
 	}
 	/* Reading all pixels and writing them into mcu->data in the right order */
 	for (uint32_t y_mcu = 0; y_mcu < mcus->height; y_mcu++) {
