@@ -20,7 +20,8 @@ int16_t phi(struct array_mcu *mcus, size_t canal, size_t i_mcu, size_t i_bloc, i
             *cos((2*x+1)*i*3.1415926535897932/16)*cos((2*y+1)*j*3.1415926535897932/16);
         }
     }
-    return((int16_t)(1/4)*c(i)*c(j)*somme);
+    int16_t result = c(i)*c(j)*somme/4;
+    return(result);
 }
 
 void dct_bloc(struct array_mcu *mcus, size_t canal, size_t i_mcu, size_t i_bloc, uint8_t h, uint8_t v)
