@@ -113,7 +113,7 @@ struct huffman *get_huffman_from_freq(uint32_t *frequences, uint8_t n)
     struct arbre *arbres = (struct arbre *)
                            malloc((2*n_non_nul + 1)*sizeof(struct arbre));
     /* On créé les feuilles */
-    uint8_t next_indice = 0;
+    uint16_t next_indice = 0;
     for (uint8_t i = 0; i < n; ++i) {
         if (frequences[i] != 0) {
             arbres[next_indice].est_feuille = true;
@@ -132,15 +132,15 @@ struct huffman *get_huffman_from_freq(uint32_t *frequences, uint8_t n)
     ++next_indice;
     /* On créé un tas min (pour l'attribut freq_abs)
      * de pointeurs vers des struct arbre */
-    uint8_t taille_tas = n_non_nul+1;
+    uint16_t taille_tas = n_non_nul+1; /* Peut être égal à 256... */
     struct arbre **tas_min = (struct arbre **)
                              malloc(taille_tas*sizeof(struct arbre *));
     /* On le remplis avec les feuilles créés */
-    for (uint8_t i = 0; i < taille_tas; ++i) {
+    for (uint16_t i = 0; i < taille_tas; ++i) {
         tas_min[i] = &arbres[i];
     }
     /* On organise le tas_min */
-    for (uint8_t i = taille_tas; i > 0;) {
+    for (uint16_t i = taille_tas; i > 0;) {
         percole_desc(tas_min, taille_tas, --i);
     }
     /* On fusionne les arbres de poids minimum jusqu'a n'en avoir plus qu'un */

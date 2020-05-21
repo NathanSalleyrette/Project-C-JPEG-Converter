@@ -556,6 +556,9 @@ extern void jpeg_set_huffman_table_perso(struct jpeg *jpg, struct array_mcu *mcu
             * Le +1 sert à ne pas supprimer les symboles de fréquence 1 */
             frequences_AC[1][i] = ((frequences_AC[1][i] + 1) >> 1) + ((frequences_AC[2][i] + 1) >> 1);
         }
+        for (uint8_t i = 0; i < 12; ++i) {
+            frequences_DC[1][i] += frequences_DC[2][i];
+        }
         jpg->huffman[2] = get_huffman_from_freq(frequences_DC[1], 12);
         jpg->huffman[3] = get_huffman_from_freq(frequences_AC[1], 251);
     }
