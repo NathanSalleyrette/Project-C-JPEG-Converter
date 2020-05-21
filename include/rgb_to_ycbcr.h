@@ -1,8 +1,8 @@
 #ifndef _RGB_TO_YCBCR_H_
 #define _RGB_TO_YCBCR_H_
 
-# include "mcu.h"
+#include <mcu.h>
 
-extern void rgb_to_ycbcr(struct jpeg* jpg, struct array_mcu* mcus);
+extern void rgb_to_ycbcr(struct array_mcu* mcus);
 
 #endif /* _RGB_TO_YCBCR_H_ */
