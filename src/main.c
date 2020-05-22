@@ -7,7 +7,9 @@
 #include <zigzag.h>
 #include <huffman.h>
 #include <rgb_to_ycbcr.h>
+#include <quantification.h>
 
+#include <qtables.h>
 
 /* À enlever */
 #include <math.h>
@@ -48,21 +50,25 @@ Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
     /* Le module DCT fonctionne mais c'est un peu long pour des images en 4K
     * à cause du recalcul des cosinus donc je laisse le choix entre quelle
     * fonction utiliser */
-    // dct(mcu);
-    dct_precalcul(mcu);
+    dct(mcu);
+    // dct_precalcul(mcu);
 
     /* Zigzag */
     matrice_to_zigzag(mcu);
 
     /* Quantification avec une matrice remplie de 1 en attendant le module */
-    uint8_t *Yquantification = malloc(64*sizeof(uint8_t));
+    /* uint8_t *Yquantification = malloc(64*sizeof(uint8_t));
     uint8_t *Cquantification = malloc(64*sizeof(uint8_t));
     for (uint8_t i = 0; i < 64; ++i) {
         Yquantification[i] = 1;
         Cquantification[i] = 1;
     }
     jpeg_set_quantization_table(jpg, Y, Yquantification);
-    jpeg_set_quantization_table(jpg, Cb, Cquantification);
+    jpeg_set_quantization_table(jpg, Cb, Cquantification); */
+    jpeg_set_quantization_table(jpg, Y, quantification_table_Y);
+    jpeg_set_quantization_table(jpg, Cb, quantification_table_CbCr);
+    jpeg_set_quantization_table(jpg, Cr, quantification_table_CbCr);
+    quantization(jpg, mcu);
 
     /* Huffman */
     jpeg_set_huffman_table_perso(jpg, mcu);

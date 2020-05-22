@@ -48,8 +48,6 @@ extern void jpeg_destroy(struct jpeg *jpg)
     for (size_t i = 0; i < 4; ++i)
         delete_huffman(jpg->huffman[i]);
     free(jpg->huffman);
-    for (size_t i = 0; i < 2; ++i)
-        free(jpg->quantification[i]);
     free(jpg->quantification);
     free(jpg);
 }
