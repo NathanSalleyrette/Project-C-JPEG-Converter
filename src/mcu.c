@@ -24,9 +24,12 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 	mcus->height = (jpeg_get_image_height(jpeg) + (mcus->sf[1] << 3) - 1) / (mcus->sf[1] << 3);
 
 	/* Creating the data array */
+
+	// lignes suivantes a priori inutiles
 	uint32_t mcu_pixel_width = mcus->sf[0] << 3;
 	uint32_t mcu_pixel_height = mcus->sf[1] << 3;
 	uint32_t pixel_per_mcu = mcu_pixel_width * mcu_pixel_height;
+	//
 	mcus->data = malloc(mcus->ct * sizeof(int16_t *));
 	for (uint8_t i = 0; i < mcus->ct; i++) {
 		mcus->data[i] = malloc(pixel_per_mcu * mcus->width * mcus->height * sizeof(int16_t));
@@ -40,6 +43,8 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 		while (fgetc(image) != '\n');
 	}
 	/* Reading all pixels and writing them into mcu->data in the right order */
+
+	uint32_t indice;
 	for (uint32_t y_mcu = 0; y_mcu < mcus->height; y_mcu++) {
 		for (uint8_t y_block = 0; y_block < mcus->sf[1]; y_block++) {
 			for (uint32_t y_pixel = 0; y_pixel < 8; y_pixel++) {
@@ -47,15 +52,31 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 					for (uint8_t x_block = 0; x_block < mcus->sf[0]; x_block++) {
 						for (uint32_t x_pixel = 0; x_pixel < 8; x_pixel++) {
 							for (uint8_t component = 0; component < mcus->ct; component++) {
-								if (feof(image)) {
-									printf("Input file \'%s\' is not correctly encoded. (Less values encountered than expected)\n", jpeg_get_ppm_filename(jpeg));
-									return NULL;
+								indice = (pixel_per_mcu * (x_mcu + mcus->width * y_mcu) +\
+								 				 64 *((uint32_t)x_block + (uint32_t) mcus->sf[0] * (uint32_t) y_block) + x_pixel \
+												 + 8 * y_pixel )*3 + (uint32_t)component;
+								if (indice <jpeg_get_image_width(jpeg)*jpeg_get_image_height(jpeg)*3) {
+									if (feof(image)) {
+										printf("Input file \'%s\' is not correctly encoded. (Less values encountered than expected)\n", jpeg_get_ppm_filename(jpeg));
+										return NULL;
+									}
+									mcus->data[component][(indice-component)/3] = (uint16_t) fgetc(image);
+								} else {
+									if (y_mcu > jpeg_get_image_height(jpeg)/pixel_per_mcu) {
+										mcus->data[component][(indice-component)/3] =\
+										 						mcus->data[component][pixel_per_mcu * (x_mcu + \
+											 					mcus->width * jpeg_get_image_height(jpeg)/pixel_per_mcu) + 64 *(x_block + \
+																mcus->sf[0] * y_block) + x_pixel + 8 * y_pixel];
+									} else {
+										mcus->data[component][(indice-component)/3] =\
+										 						mcus->data[component][pixel_per_mcu * (jpeg_get_image_width(jpeg)/pixel_per_mcu+ \
+											 					mcus->width * y_mcu) + 64 *(x_block + \
+																mcus->sf[0] * y_block) + x_pixel + 8 * y_pixel];
+									}
 								}
-								mcus->data[component][pixel_per_mcu * (x_mcu + mcus->width * y_mcu) + 64 * (x_block + mcus->sf[0] * y_block) + x_pixel + 8 * y_pixel] = (uint16_t) fgetc(image);
 							}
 						}
 					}
-
 				}
 			}
 		}

@@ -65,6 +65,7 @@ Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
     }
     jpeg_set_quantization_table(jpg, Y, Yquantification);
     jpeg_set_quantization_table(jpg, Cb, Cquantification); */
+    
     jpeg_set_quantization_table(jpg, Y, quantification_table_Y);
     jpeg_set_quantization_table(jpg, Cb, quantification_table_CbCr);
     jpeg_set_quantization_table(jpg, Cr, quantification_table_CbCr);
