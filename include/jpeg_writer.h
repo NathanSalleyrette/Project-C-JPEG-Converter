@@ -162,7 +162,9 @@ extern uint8_t jpeg_get_sampling_factor(struct jpeg *jpg,
     Ecrit dans la structure jpeg toutes les tables de Huffman nécessaires
     à partir de mcu.
 */
-extern void jpeg_set_huffman_table(struct jpeg *jpg, struct array_mcu *mcu);
+extern void jpeg_set_huffman_table(struct jpeg *jpg);
+
+extern void jpeg_set_huffman_table_perso(struct jpeg *jpg, struct array_mcu *mcu);
 
 /*
     Retourne un pointeur vers la table de Huffman utilisée pour encoder

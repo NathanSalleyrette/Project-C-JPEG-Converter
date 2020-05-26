@@ -48,8 +48,6 @@ extern void jpeg_destroy(struct jpeg *jpg)
     for (size_t i = 0; i < 4; ++i)
         delete_huffman(jpg->huffman[i]);
     free(jpg->huffman);
-    for (size_t i = 0; i < 2; ++i)
-        free(jpg->quantification[i]);
     free(jpg->quantification);
     free(jpg);
 }
@@ -207,78 +205,96 @@ extern void jpeg_write_header(struct jpeg *jpg)
 /* Écrit les données brutes dans l'image */
 void jpeg_write_body(struct jpeg *jpg, struct array_mcu *mcu)
 {
-    /* On compte le nombre de mcu et le nombre de blocs par composante */
-    size_t n_mcu =  mcu->height*mcu->width;
-    /* Pas besoin de recalculer n_bloc à chaque tour de boucle */
-    uint8_t *n_bloc = malloc(mcu->ct*sizeof(uint8_t));
-    for (uint8_t canal = 0; canal < mcu->ct; ++canal) {
-        n_bloc[canal] = mcu->sf[2*canal]*mcu->sf[2*canal+1];
+    size_t n_mcu = mcu->width*mcu->height;
+    uint8_t *n_bloc_par_MCU = malloc(mcu->ct*sizeof(uint8_t));
+    for (uint8_t i = 0; i < mcu->ct; ++i) {
+        n_bloc_par_MCU[i] = mcu->sf[2*i]*mcu->sf[2*i + 1];
     }
 
+    /* Pour faire des différences d'éléments DC */
+    int16_t elemDC_precedent[3] = {0, 0, 0};
 
-    /* On parcours l'image dans l'ordre défini */
-    for (size_t i_mcu = 0; i_mcu < n_mcu; ++i_mcu) {
+    /* On parcourt tous les MCU */
+    for (size_t i_mcu = 0; i_mcu < n_mcu; i_mcu++) {
+        /* Pour chaque MCU on parcourt les canaux */
         for (uint8_t canal = 0; canal < mcu->ct; ++canal) {
-            struct huffman *huffDC = jpg->huffman[(canal == Y) ? 0 : 2];
-            struct huffman *huffAC = jpg->huffman[(canal == Y) ? 1 : 3];
-            for (size_t i_bloc = 0; i_bloc < n_bloc[canal]; ++i_bloc) {
-                /* Écriture d'une composante DC */
-                size_t i_debut_bloc = (i_mcu*n_bloc[canal] + i_bloc)*64;
+            /* On a les arbres de Huffman suivants pour ce canal */
+            struct huffman *huffDC = jpg->huffman[(canal == 0) ? 0 : 2];
+            struct huffman *huffAC = jpg->huffman[(canal == 0) ? 1 : 3];
+            /* Pour chaque MCU et chaque canal on parcourt les blocs correspondants */
+            for (uint8_t i_bloc = 0; i_bloc < n_bloc_par_MCU[canal]; ++i_bloc) {
+                /* Le bloc en question va de mcu->data[canal][i_debut] à mcu->data[canal][i_debut+63] */
+                size_t i_debut = (i_mcu*n_bloc_par_MCU[canal]+i_bloc)*64;
 
-
-                int16_t coeffDC = mcu->data[canal][i_debut_bloc] -
-                    ((i_debut_bloc == 0) ? 0 : mcu->data[canal][i_debut_bloc-64]);
+                /* On écrit le coefficient DC dans le bitstream */
+                /* On à le coefficient suivant à encoder */
+                int16_t coeffDC = mcu->data[canal][i_debut] - elemDC_precedent[canal];
+                elemDC_precedent[canal] = mcu->data[canal][i_debut];
+                /* On trouve la magnitude et l'indice correspondant */
                 uint8_t magnitudeDC = magnitude(coeffDC);
                 uint16_t indiceDC = indice(coeffDC, magnitudeDC);
-
-                /* Huffman de la magnitude + indice */
+                /* On écrit le symbole encodant la magnitude dans le bitstream */
                 bitstream_write_bits(jpg->bitstream,
                                      huffDC->chemins_par_symbole[magnitudeDC],
                                      huffDC->nbits_par_symbole[magnitudeDC],
                                      false);
+                /* On écrit l'indice dans le bitstream */
                 bitstream_write_bits(jpg->bitstream,
                                      indiceDC,
                                      magnitudeDC,
                                      false);
 
-                /* Écriture des composantes AC */
-                uint8_t i = 0;
+                /* On écrit les coefficient AC dans le bitstream */
+                uint8_t i = 1;
                 while (i < 64) {
+                    /* On compte le nombre de coefficients nuls */
                     uint8_t n_nuls = 0;
-                    while (i < 64 && n_nuls < 16 && mcu->data[canal][i_debut_bloc + i] == 0) {
-                        ++i;
+                    while (i < 64 && mcu->data[canal][i_debut + i] == 0) {
                         ++n_nuls;
+                        ++i;
                     }
-                    if (i >= 64) {
+                    if (i == 64) {
                         /* EOB 0x00 */
-                        bitstream_write_bits(jpg->bitstream, 0x00, 8, false);
-                    } else if (n_nuls >= 16) {
-                        /* ZRL 0xF0 */
-                        bitstream_write_bits(jpg->bitstream, 0xF0, 8, false);
+                        bitstream_write_bits(jpg->bitstream,
+                                             huffAC->chemins_par_symbole[0x00],
+                                             huffAC->nbits_par_symbole[0x00],
+                                             false);
                     } else {
-                        /* RLE normal */
-                        int16_t coeffAC = mcu->data[canal][i_debut_bloc+i];
+                        while (n_nuls >= 16) {
+                            /* ZRL 0xF0 */
+                            bitstream_write_bits(jpg->bitstream,
+                                                 huffAC->chemins_par_symbole[0xF0],
+                                                 huffAC->nbits_par_symbole[0xF0],
+                                                 false);
+                            n_nuls -= 16;
+                        }
+                        /* On doit encore coder n_nuls (<16) coeffs nuls et
+                         * un coeff non nul */
+                        /* Le coefficient AC est le suivant */
+                        int16_t coeffAC = mcu->data[canal][i_debut + i];
+                        /* On a la magnitude et l'indice suivant à encoder */
                         uint8_t magnitudeAC = magnitude(coeffAC);
                         uint16_t indiceAC = indice(coeffAC, magnitudeAC);
-
-                        /* Huffman du symbole RLE + indice */
-                        uint8_t symbole = magnitudeAC | (n_nuls << 4);
+                        /* Le symbole RLE à encoder est le suivant */
+                        uint8_t symbole = (n_nuls << 4) | magnitudeAC;
+                        /* On encode et on écrit le symbole RLE dans le bitstream */
                         bitstream_write_bits(jpg->bitstream,
                                              huffAC->chemins_par_symbole[symbole],
                                              huffAC->nbits_par_symbole[symbole],
                                              false);
+                        /* On écrit l'indice dans le bitstream */
                         bitstream_write_bits(jpg->bitstream,
                                              indiceAC,
                                              magnitudeAC,
                                              false);
+                        /* On passe au coefficient suivant */
                         ++i;
                     }
                 }
             }
         }
     }
-
-    free(n_bloc);
+    free(n_bloc_par_MCU);
 }
 
 /* Ecrit le footer JPEG (marqueur EOI) dans le fichier de sortie. */
@@ -415,12 +431,27 @@ extern uint8_t jpeg_get_sampling_factor(struct jpeg *jpg,
     return jpg->sampling_factor[dir + 2*cc];
 }
 
+/*
+    Ecrit dans la structure jpeg toutes les tables de Huffman nécessaires
+    à partir de mcu. Sauf que c'est pas drôle parce que les tables sont
+    données...
+*/
+extern void jpeg_set_huffman_table(struct jpeg* jpg)
+{
+    jpg->huffman[0] = get_huffman_premade(DC, Y);
+    jpg->huffman[1] = get_huffman_premade(AC, Y);
+
+    if (jpg->nb_components == 3) {
+        jpg->huffman[2] = get_huffman_premade(DC, Cb);
+        jpg->huffman[3] = get_huffman_premade(AC, Cb);
+    }
+}
 
 /*
     Ecrit dans la structure jpeg toutes les tables de Huffman nécessaires
     à partir de mcu.
 */
-extern void jpeg_set_huffman_table(struct jpeg *jpg, struct array_mcu *mcu)
+extern void jpeg_set_huffman_table_perso(struct jpeg *jpg, struct array_mcu *mcu)
 {
     /* Les symboles DC vont de 0 à 11, donc tableau de taille 12
      * Les symboles AC vont de 0x00 à 0xFA (avec des trous au milieu), on fait
@@ -432,54 +463,86 @@ extern void jpeg_set_huffman_table(struct jpeg *jpg, struct array_mcu *mcu)
         frequences_AC[i] = calloc(251, sizeof(uint32_t));
     }
 
-    /* On parcours l'image dans l'ordre défini */
-    for (uint8_t canal = 0; canal < mcu->ct; ++canal) {
-        size_t n_elem = mcu->height*mcu->width*mcu->sf[2*canal]*mcu->sf[2*canal+1]*64;
-        for (size_t i_chunk = 0; i_chunk < n_elem; i_chunk += 64) {
+    size_t n_mcu = mcu->width*mcu->height;
+    uint8_t *n_bloc_par_MCU = malloc(mcu->ct*sizeof(uint8_t));
+    for (uint8_t i = 0; i < mcu->ct; ++i) {
+        n_bloc_par_MCU[i] = mcu->sf[2*i]*mcu->sf[2*i + 1];
+    }
 
-            /* Composante DC*/
-            int16_t coeffDC = mcu->data[canal][i_chunk] - ((i_chunk == 0) ? 0 : mcu->data[canal][i_chunk-64]);
-            uint8_t magnitudeDC = magnitude(coeffDC);
-            if (magnitudeDC > 11) {
-                fprintf(stderr, "Erreur de magnitude DC dans jpeg_set_huffman_table : coeff = %i, magnitude = %u\n", mcu->data[canal][i_chunk], magnitudeDC);
-            }
-            ++frequences_DC[canal][magnitudeDC];
+    /* Pour faire des différences d'éléments DC */
+    int16_t elemDC_precedent[3] = {0, 0, 0};
+
+    /* On parcourt tous les MCU */
+    for (size_t i_mcu = 0; i_mcu < n_mcu; i_mcu++) {
+        /* Pour chaque MCU on parcourt les canaux */
+        for (uint8_t canal = 0; canal < mcu->ct; ++canal) {
+            /* Pour chaque MCU et chaque canal on parcourt les blocs correspondants */
+            for (uint8_t i_bloc = 0; i_bloc < n_bloc_par_MCU[canal]; ++i_bloc) {
+                /* Le bloc en question va de mcu->data[canal][i_debut] à mcu->data[canal][i_debut+63] */
+                size_t i_debut = (i_mcu*n_bloc_par_MCU[canal]+i_bloc)*64;
+
+                /* On écrit le coefficient DC dans le bitstream */
+                /* On à le coefficient suivant à encoder */
+                int16_t coeffDC = mcu->data[canal][i_debut] - elemDC_precedent[canal];
+                elemDC_precedent[canal] = mcu->data[canal][i_debut];
+                /* On trouve la magnitude et l'indice correspondant */
+                uint8_t magnitudeDC = magnitude(coeffDC);
 
 
-            /* Composantes AC */
-            uint8_t magnitudeAC;
-            uint8_t i = 1;
-            while (i < 64) {
-                uint8_t n_nuls = 0;
-                while (i < 64 && n_nuls < 16 && mcu->data[canal][i_chunk + i] == 0) {
-                    ++i;
-                    ++n_nuls;
-                }
-                if (i >= 64) {
-                    /* EOB 0x00 */
-                    n_nuls = 0;
-                    magnitudeAC = 0;
-                } else if (n_nuls >= 16) {
-                    /* ZRL 0xF0 */
-                    n_nuls = 15;
-                    magnitudeAC = 0;
-                } else {
-                    /* RLE normal */
-                    magnitudeAC = magnitude(mcu->data[canal][i_chunk + i]);
-                    if (magnitudeAC > 10 || magnitudeAC == 0) {
-                        fprintf(stderr, "Erreur de magnitude AC dans jpeg_set_huffman_table : coeff = %i, magnitude = %u\n", mcu->data[canal][i_chunk + i], magnitudeAC);
+                /* Il faut encoder magnitudeDC pour canal et DC */
+                ++frequences_DC[canal][magnitudeDC];
+
+
+                /* On écrit les coefficient AC dans le bitstream */
+                uint8_t i = 1;
+                while (i < 64) {
+                    /* On compte le nombre de coefficients nuls */
+                    uint8_t n_nuls = 0;
+                    while (i < 64 && mcu->data[canal][i_debut + i] == 0) {
+                        ++n_nuls;
+                        ++i;
                     }
-                    ++i;
+                    if (i == 64) {
+                        /* EOB 0x00 */
+
+
+                        /* Il faut encoder 0x00 pour canal et AC */
+                        ++frequences_AC[canal][0x00];
+
+
+                    } else {
+                        while (n_nuls >= 16) {
+                            /* ZRL 0xF0 */
+
+
+                            /* Il faut encoder 0xF0 pour canal et AC */
+                            ++frequences_AC[canal][0xF0];
+
+
+                            n_nuls -= 16;
+                        }
+                        /* On doit encore coder n_nuls (<16) coeffs nuls et
+                         * un coeff non nul */
+                        /* Le coefficient AC est le suivant */
+                        int16_t coeffAC = mcu->data[canal][i_debut + i];
+                        /* On a la magnitude à encoder */
+                        uint8_t magnitudeAC = magnitude(coeffAC);
+                        /* Le symbole RLE à encoder est le suivant */
+                        uint8_t symbole = (n_nuls << 4) | magnitudeAC;
+
+
+                        /* Il faut encoder symbole pour canal et AC */
+                        ++frequences_AC[canal][symbole];
+
+
+                        /* On passe au coefficient suivant */
+                        ++i;
+                    }
                 }
-
-
-
-                uint8_t symbole = magnitudeAC | (n_nuls << 4);
-                ++frequences_AC[canal][symbole];
             }
-
         }
     }
+    free(n_bloc_par_MCU);
 
     jpg->huffman[0] = get_huffman_from_freq(frequences_DC[0], 12);
     jpg->huffman[1] = get_huffman_from_freq(frequences_AC[0], 251);
@@ -490,6 +553,9 @@ extern void jpeg_set_huffman_table(struct jpeg *jpg, struct array_mcu *mcu)
             * si on additionnes simplement les frequences_AC de Cb et Cr
             * Le +1 sert à ne pas supprimer les symboles de fréquence 1 */
             frequences_AC[1][i] = ((frequences_AC[1][i] + 1) >> 1) + ((frequences_AC[2][i] + 1) >> 1);
+        }
+        for (uint8_t i = 0; i < 12; ++i) {
+            frequences_DC[1][i] += frequences_DC[2][i];
         }
         jpg->huffman[2] = get_huffman_from_freq(frequences_DC[1], 12);
         jpg->huffman[3] = get_huffman_from_freq(frequences_AC[1], 251);

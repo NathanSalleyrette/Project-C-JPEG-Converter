@@ -169,6 +169,12 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	}
 	uint32_t width = 0;
 	char digit = fgetc(image);
+	if (digit == '#') {
+		while (digit != '\n') {
+			digit = fgetc(image);
+		}
+		digit = fgetc(image);
+	}
 	if (!isdigit(digit)) {
 		printf("Input file \'%s\' is not correctly encoded. (Wrong width)\n", input_filename);
 		return NULL;
