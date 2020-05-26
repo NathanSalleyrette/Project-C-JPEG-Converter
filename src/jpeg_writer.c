@@ -48,6 +48,8 @@ extern void jpeg_destroy(struct jpeg *jpg)
     for (size_t i = 0; i < 4; ++i)
         delete_huffman(jpg->huffman[i]);
     free(jpg->huffman);
+    for (size_t i = 0; i < 2; ++i)
+        free(jpg->quantification[i]);
     free(jpg->quantification);
     free(jpg);
 }
@@ -591,7 +593,10 @@ extern void jpeg_set_quantization_table(struct jpeg *jpg,
                                         enum color_component cc,
                                         uint8_t *qtable)
 {
-    jpg->quantification[(cc == Y) ? 0 : 1] = qtable;
+    uint8_t indice = (cc == Y) ? 0 : 1;
+    if (jpg->quantification[indice] != NULL)
+        free(jpg->quantification[indice]);
+    jpg->quantification[indice] = qtable;
 }
 
 /*

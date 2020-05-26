@@ -9,8 +9,6 @@
 #include <rgb_to_ycbcr.h>
 #include <quantification.h>
 
-#include <qtables.h>
-
 /* À enlever */
 #include <math.h>
 #define _PI (3.1415926535898f)
@@ -56,19 +54,9 @@ Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
     /* Zigzag */
     matrice_to_zigzag(mcu);
 
-    /* Quantification avec une matrice remplie de 1 en attendant le module */
-    /* uint8_t *Yquantification = malloc(64*sizeof(uint8_t));
-    uint8_t *Cquantification = malloc(64*sizeof(uint8_t));
-    for (uint8_t i = 0; i < 64; ++i) {
-        Yquantification[i] = 1;
-        Cquantification[i] = 1;
-    }
-    jpeg_set_quantization_table(jpg, Y, Yquantification);
-    jpeg_set_quantization_table(jpg, Cb, Cquantification); */
-    
-    jpeg_set_quantization_table(jpg, Y, quantification_table_Y);
-    jpeg_set_quantization_table(jpg, Cb, quantification_table_CbCr);
-    jpeg_set_quantization_table(jpg, Cr, quantification_table_CbCr);
+    /* Quantification */
+    jpeg_set_quantization_table(jpg, Y, get_quantization_table(Y));
+    jpeg_set_quantization_table(jpg, Cb, get_quantization_table(Cb));
     quantization(jpg, mcu);
 
     /* Huffman */
