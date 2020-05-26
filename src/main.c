@@ -18,8 +18,6 @@ void dct_precalcul(struct array_mcu *mcu);
 
 int main(int argc, char *argv[])
 {
-    (void) argc;
-    (void) argv;
     printf("\
 --------------------------------------------------------------------------------\n\
 Projet C : Mathis MARION, Alan MANIC, Nathan SALLEYRETTE, Thibault BRUYÈRE\n\
@@ -38,25 +36,21 @@ Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
         return EXIT_FAILURE;
 
     /* Conversion RGB vers YCbCr */
-    /* Conversion en despi en attendant le module */
     rgb_to_ycbcr(mcu);
 
     /* Downsampling */
-    // downsample(jpg, mcu);
+    downsample(jpg, mcu);
 
     /* DCT */
-    /* Le module DCT fonctionne mais c'est un peu long pour des images en 4K
-    * à cause du recalcul des cosinus donc je laisse le choix entre quelle
-    * fonction utiliser */
     dct(mcu);
-    // dct_precalcul(mcu);
 
     /* Zigzag */
     matrice_to_zigzag(mcu);
 
     /* Quantification */
-    jpeg_set_quantization_table(jpg, Y, get_quantization_table(Y));
-    jpeg_set_quantization_table(jpg, Cb, get_quantization_table(Cb));
+    bool pertes = false;
+    jpeg_set_quantization_table(jpg, Y, get_quantization_table(Y, pertes));
+    jpeg_set_quantization_table(jpg, Cb, get_quantization_table(Cb, pertes));
     quantization(jpg, mcu);
 
     /* Huffman */
@@ -72,48 +66,4 @@ Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
     delete_mcu(mcu);
 
     return EXIT_SUCCESS;
-}
-
-
-
-/*
-    Même rôle que la fonction dct mais en un peu plus rapide
-*/
-void dct_precalcul(struct array_mcu *mcu) {
-   float *cos_bloc = malloc(64*sizeof(float));
-   for (uint8_t x = 0; x < 8; ++x) {
-       cos_bloc[8*x] = 1/(2.f*sqrt(2));
-       for (uint8_t i = 1; i < 8; ++i) {
-           cos_bloc[i+8*x] = cos(((float)((2*x+1)*i))*_PI/16.f)/2.f;
-       }
-   }
-   float *tampon = malloc(64*sizeof(float));
-   for (uint8_t canal = 0; canal < mcu->ct; ++canal) {
-       size_t nelem = mcu->width*mcu->height*mcu->sf[2*canal]*mcu->sf[2*canal+1]*64;
-       for (size_t i_debut_bloc = 0; i_debut_bloc < nelem; i_debut_bloc += 64) {
-           /* On parcourt le tampon avec les indices i et j */
-           for (uint8_t i = 0; i < 8; ++i) {
-               for (uint8_t j = 0; j < 8; ++j) {
-
-                   /* Calcul du coefficient i, j */
-                   tampon[i+8*j] = 0.f;
-                   /* On parcourt les données avec les indices x et y */
-                   for (uint8_t x = 0; x < 8; ++x) {
-                       for (uint8_t y = 0; y < 8; ++y) {
-                           /* On a intégré C(i), C(j) et 2/n dans cos_bloc */
-                           tampon[i+8*j] += \
-   (mcu->data[canal][i_debut_bloc+x+8*y]-128)*cos_bloc[i+8*x]*cos_bloc[j+8*y];
-                       }
-                   }
-
-
-               }
-           }
-           for (uint8_t i = 0; i < 64; ++i) {
-               mcu->data[canal][i_debut_bloc+i] = ((int16_t)tampon[i]);
-           }
-       }
-   }
-   free(tampon);
-   free(cos_bloc);
 }

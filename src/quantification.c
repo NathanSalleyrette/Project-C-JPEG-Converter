@@ -1,12 +1,19 @@
 #include <quantification.h>
+#include <qtables.h>
 
 /* Voir description dans le header */
-uint8_t *get_quantization_table(enum color_component cc)
+uint8_t *get_quantization_table(enum color_component cc, bool loss)
 {
     uint8_t *table = malloc(64*sizeof(uint8_t));
-    uint8_t *table_copy = (cc == Y) ? quantification_table_Y : quantification_table_CbCr;
-    for (uint8_t i = 0; i < 64; ++i) {
-        table[i] = table_copy[i];
+    if (loss) {
+        uint8_t *table_copy = (cc == Y) ? quantification_table_Y : quantification_table_CbCr;
+        for (uint8_t i = 0; i < 64; ++i) {
+            table[i] = table_copy[i];
+        }
+    } else {
+        for (uint8_t i = 0; i < 64; ++i) {
+            table[i] = 1;
+        }
     }
     return table;
 }
