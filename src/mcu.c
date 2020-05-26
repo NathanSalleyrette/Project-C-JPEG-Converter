@@ -5,6 +5,19 @@
 #include <jpeg_writer.h>
 #include <mcu.h>
 
+uint32_t get_data_index(struct array_mcu *mcus, int32_t x, uint32_t y)
+{
+	uint32_t x_pixel = x % 8;
+	uint32_t mcu_pixel_width = mcus->sf[0] << 3;
+	uint32_t mcu_pixel_height = mcus->sf[1] << 3;
+	uint32_t pixel_per_mcu = mcu_pixel_width * mcu_pixel_height;
+	uint32_t x_block = (x % mcu_pixel_width) / 8;
+	uint32_t x_mcu = x / mcu_pixel_width;
+	uint32_t y_pixel = y % 8;
+	uint32_t y_block = (y % mcu_pixel_height) / 8;
+	uint32_t y_mcu = y / mcu_pixel_height;
+	return pixel_per_mcu * (x_mcu + mcus->width * y_mcu) + 64 * (x_block + mcus->sf[0] * y_block) + x_pixel + 8 * y_pixel;
+}
 
 /* Function creating an array_mcu struct from extracting pixel data from the input file. */
 struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
@@ -38,26 +51,34 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 		while (!isspace(fgetc(image)));
 	}
 	/* Reading all pixels and writing them into mcu->data in the right order */
-	for (uint32_t y_mcu = 0; y_mcu < mcus->height; y_mcu++) {
-		for (uint8_t y_block = 0; y_block < mcus->sf[1]; y_block++) {
-			for (uint32_t y_pixel = 0; y_pixel < 8; y_pixel++) {
-				for (uint32_t x_mcu = 0; x_mcu < mcus->width; x_mcu++) {
-					for (uint8_t x_block = 0; x_block < mcus->sf[0]; x_block++) {
-						for (uint32_t x_pixel = 0; x_pixel < 8; x_pixel++) {
-							for (uint8_t component = 0; component < mcus->ct; component++) {
-								if (feof(image)) {
-									printf("Input file \'%s\' is not correctly encoded. (Less values encountered than expected)\n", jpeg_get_ppm_filename(jpeg));
-									return NULL;
-								}
-								mcus->data[component][pixel_per_mcu * (x_mcu + mcus->width * y_mcu) + 64 * (x_block + mcus->sf[0] * y_block) + x_pixel + 8 * y_pixel] = (uint16_t) fgetc(image);
-							}
-						}
-					}
-
+	for (uint32_t y = 0; y < jpeg_get_image_height(jpeg); y++) {
+		for (uint32_t x = 0; x < jpeg_get_image_width(jpeg); x++) {
+			for (uint8_t component = 0; component < mcus->ct; component++) {
+				if (feof(image)) {
+					printf("Input file \'%s\' is not correctly encoded. (Less values encountered than expected)\n", jpeg_get_ppm_filename(jpeg));
+					return NULL;
 				}
+				mcus->data[component][get_data_index(mcus, x, y)] = (uint16_t) fgetc(image);
 			}
 		}
 	}
+	/* Copying the last pixel column into the empty slots to the right */
+	for (uint32_t y = 0; y < jpeg_get_image_height(jpeg); y++) {
+		for (uint32_t x = jpeg_get_image_width(jpeg); x < mcu_pixel_width * mcus->width; x++) {
+			for (uint8_t component = 0; component < mcus->ct; component++) {
+				mcus->data[component][get_data_index(mcus, x, y)] = mcus->data[component][get_data_index(mcus, x - 1, y)];
+			}
+		}
+	}
+	/* Copying the last pixel row into the empty slots at the bottom */
+	for (uint32_t x = 0; x < mcu_pixel_width * mcus->width; x++) {
+		for (uint32_t y = jpeg_get_image_height(jpeg); y < mcu_pixel_height * mcus->height; y++) {
+			for (uint8_t component = 0; component < mcus->ct; component++) {
+				mcus->data[component][get_data_index(mcus, x, y)] = mcus->data[component][get_data_index(mcus, x, y - 1)];
+			}
+		}
+	}
+
 	fgetc(image);
 	if (!feof(image)) {
 		printf("Input file \'%s\' is not correctly encoded. (More values encountered than expected)\n", jpeg_get_ppm_filename(jpeg));
@@ -66,6 +87,7 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 	fclose(image);
 	return mcus;
 }
+
 
 /* Function deleting an array_mcu struct and freeing the allocated memory. */
 void delete_mcu(struct array_mcu *mcus)
