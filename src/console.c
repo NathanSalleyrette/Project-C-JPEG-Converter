@@ -155,7 +155,14 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	jpeg_set_ppm_filename(jpeg, input_filename);
 
 	/* Checking file header and extracing image dimensions */
-	if (fgetc(image) != 'P') {
+	/* Reading passed comments */
+	char character = fgetc(image);
+	while (character == '#') {
+		while (fgetc(image) != '\n');
+		character = fgetc(image);
+	}
+	/* Reading magic number */
+	if (character != 'P') {
 		printf("Input file \'%s\' is not correctly encoded. (Wrong magic number)\n", input_filename);
 		return NULL;
 	}
@@ -163,18 +170,21 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		printf("This JPEG encoder only supports binary files (with magic number \'P%i\' for P%cM) as input file.\n", 5 + (type == PPM), type == PPM ? 'P' : 'G');
 		return NULL;
 	}
-	if (!isspace(fgetc(image))) {
+	char spacing = fgetc(image);
+	if (!isspace(spacing)) {
 		printf("Input file \'%s\' is not correctly encoded. (No spacing character found after magic number)\n", input_filename);
 		return NULL;
 	}
 	uint32_t width = 0;
 	char digit = fgetc(image);
-	if (digit == '#') {
-		while (digit != '\n') {
+	/* Reading passed comments */
+	if (spacing == '\n') {
+		while (digit == '#') {
+			while (fgetc(image) != '\n');
 			digit = fgetc(image);
 		}
-		digit = fgetc(image);
 	}
+	/* Reading image width */
 	if (!isdigit(digit)) {
 		printf("Input file \'%s\' is not correctly encoded. (Wrong width)\n", input_filename);
 		return NULL;
@@ -184,12 +194,21 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		width += digit - '0';
 		digit = fgetc(image);
 	}
-	if (!isspace(digit)) {
+	spacing = digit;
+	if (!isspace(spacing)) {
 		printf("Input file \'%s\' is not correctly encoded. (No spacing character found after width)\n", input_filename);
 		return NULL;
 	}
 	uint32_t height = 0;
 	digit = fgetc(image);
+	/* Reading passed comments */
+	if (spacing == '\n') {
+		while (digit == '#') {
+			while (fgetc(image) != '\n');
+			digit = fgetc(image);
+		}
+	}
+	/* Reading image height */
 	if (!isdigit(digit)) {
 		printf("Input file \'%s\' is not correctly encoded. (Wrong height)\n", input_filename);
 		return NULL;
@@ -199,12 +218,21 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		height += digit - '0';
 		digit = fgetc(image);
 	}
-	if (!isspace(digit)) {
+	spacing = digit;
+	if (!isspace(spacing)) {
 		printf("Input file \'%s\' is not correctly encoded. (No spacing character found after height)\n", input_filename);
 		return NULL;
 	}
 	uint32_t max = 0;
 	digit = fgetc(image);
+	/* Reading passed comments */
+	if (spacing == '\n') {
+		while (digit == '#') {
+			while (fgetc(image) != '\n');
+			digit = fgetc(image);
+		}
+	}
+	/* Reading maximum color value */
 	if (!isdigit(digit)) {
 		printf("Input file \'%s\' is not correctly encoded. (Wrong maximum color value)\n", input_filename);
 		return NULL;
