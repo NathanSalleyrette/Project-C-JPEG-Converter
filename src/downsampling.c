@@ -51,7 +51,6 @@ void downsample(struct jpeg* jpg, struct array_mcu* mcus)
                             for (int i_bloc=i_classe*rapport[2*(canal-1)+dimension];\
                                 i_bloc<(i_classe + 1-dimension + dimension*mcus->sf[0])*rapport[2*(canal-1)+dimension];\
                                  i_bloc = i_bloc + 1-dimension + dimension*mcus->sf[0]) {
-                                // Présupposé: la taille du bloc est 8x8
                                 moyenne += mcus->data[canal][(i_mcu*h*v + i_bloc)*64 + i];
                             }
                             moyenne = moyenne/rapport[2*(canal-1)+dimension];
@@ -73,8 +72,8 @@ void downsample(struct jpeg* jpg, struct array_mcu* mcus)
         }
          for (int canal = 1; canal < 3; canal++) {
              mcus->data[canal] = realloc(mcus->data[canal], \
-             sizeof(int16_t)*mcus->height*mcus->width*64/\
-             (rapport[2*(canal-1)]*rapport[2*(canal-1)+1]));
+             sizeof(int16_t)*mcus->height*mcus->width*64\
+             *(mcus->sf[2*canal]*mcus->sf[2*canal+1]));
         }
         free(rapport);
     }
