@@ -625,6 +625,11 @@ extern void jpeg_set_huffman_type(struct jpeg *jpg, bool b)
     jpg->huffman_perso = b;
 }
 
+extern bool jpeg_get_huffman_type(struct jpeg *jpg)
+{
+    return jpg->huffman_perso;
+}
+
 /*
     Indique le type de table de quantification utilisée
     true : avec perte
@@ -633,4 +638,9 @@ extern void jpeg_set_huffman_type(struct jpeg *jpg, bool b)
 extern void jpeg_set_loss(struct jpeg *jpg, bool b)
 {
     jpg->loss = b;
+}
+
+extern bool jpeg_get_loss(struct jpeg *jpg)
+{
+    return jpg->loss;
 }

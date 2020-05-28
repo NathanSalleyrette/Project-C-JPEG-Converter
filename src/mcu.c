@@ -5,18 +5,19 @@
 #include <jpeg_writer.h>
 #include <mcu.h>
 
-uint32_t get_data_index(struct array_mcu *mcus, int32_t x, uint32_t y)
+size_t get_indice_from_coordinates(struct array_mcu *mcu, uint8_t canal, size_t x, size_t y)
 {
-	uint32_t x_pixel = x % 8;
-	uint32_t mcu_pixel_width = mcus->sf[0] << 3;
-	uint32_t mcu_pixel_height = mcus->sf[1] << 3;
-	uint32_t pixel_per_mcu = mcu_pixel_width * mcu_pixel_height;
-	uint32_t x_block = (x % mcu_pixel_width) / 8;
-	uint32_t x_mcu = x / mcu_pixel_width;
-	uint32_t y_pixel = y % 8;
-	uint32_t y_block = (y % mcu_pixel_height) / 8;
-	uint32_t y_mcu = y / mcu_pixel_height;
-	return pixel_per_mcu * (x_mcu + mcus->width * y_mcu) + 64 * (x_block + mcus->sf[0] * y_block) + x_pixel + 8 * y_pixel;
+    uint8_t h = mcu->sf[2*canal];
+    uint8_t v = mcu->sf[2*canal+1];
+    size_t i_mcu_x = x/(8*h);
+    size_t i_mcu_y = y/(8*v);
+    x = x % (8*h);
+    y = y % (8*v);
+    uint8_t i_bloc_x = x/8;
+    uint8_t i_bloc_y = y/8;
+    x = x % 8;
+    y = y % 8;
+    return (i_mcu_x + i_mcu_y*mcu->width)*64*h*v + (i_bloc_x + i_bloc_y*h)*64 + x + y*8;
 }
 
 /* Function creating an array_mcu struct from extracting pixel data from the input file. */
@@ -64,7 +65,7 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 					printf("Input file \'%s\' is not correctly encoded. (Less values encountered than expected)\n", jpeg_get_ppm_filename(jpeg));
 					return NULL;
 				}
-				mcus->data[component][get_data_index(mcus, x, y)] = (uint16_t) fgetc(image);
+				mcus->data[component][get_indice_from_coordinates(mcus, 0, x, y)] = (uint16_t) fgetc(image);
 			}
 		}
 	}
@@ -72,7 +73,7 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 	for (uint32_t y = 0; y < jpeg_get_image_height(jpeg); y++) {
 		for (uint32_t x = jpeg_get_image_width(jpeg); x < mcu_pixel_width * mcus->width; x++) {
 			for (uint8_t component = 0; component < mcus->ct; component++) {
-				mcus->data[component][get_data_index(mcus, x, y)] = mcus->data[component][get_data_index(mcus, x - 1, y)];
+				mcus->data[component][get_indice_from_coordinates(mcus, 0, x, y)] = mcus->data[component][get_indice_from_coordinates(mcus, 0, x - 1, y)];
 			}
 		}
 	}
@@ -80,7 +81,7 @@ struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 	for (uint32_t x = 0; x < mcu_pixel_width * mcus->width; x++) {
 		for (uint32_t y = jpeg_get_image_height(jpeg); y < mcu_pixel_height * mcus->height; y++) {
 			for (uint8_t component = 0; component < mcus->ct; component++) {
-				mcus->data[component][get_data_index(mcus, x, y)] = mcus->data[component][get_data_index(mcus, x, y - 1)];
+				mcus->data[component][get_indice_from_coordinates(mcus, 0, x, y)] = mcus->data[component][get_indice_from_coordinates(mcus, 0, x, y - 1)];
 			}
 		}
 	}
