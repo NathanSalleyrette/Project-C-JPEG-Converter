@@ -18,7 +18,6 @@ void dct_precalcul(struct array_mcu *mcu);
 
 int main(int argc, char *argv[])
 {
-
     /* Récupération des informations sur le jpeg et le ppm/pgm */
     struct jpeg *jpg = get_jpeg_from_console(argc, argv);
     if (jpg == NULL)
@@ -42,13 +41,17 @@ int main(int argc, char *argv[])
     matrice_to_zigzag(mcu);
 
     /* Quantification */
-    bool pertes = false;
-    jpeg_set_quantization_table(jpg, Y, get_quantization_table(Y, pertes));
-    jpeg_set_quantization_table(jpg, Cb, get_quantization_table(Cb, pertes));
+    bool loss = jpeg_get_loss(jpg);
+    jpeg_set_quantization_table(jpg, Y, get_quantization_table(Y, loss));
+    jpeg_set_quantization_table(jpg, Cb, get_quantization_table(Cb, loss));
     quantization(jpg, mcu);
 
     /* Huffman */
-    jpeg_set_huffman_table_perso(jpg, mcu);
+    if (jpeg_get_huffman_type(jpg)) {
+        jpeg_set_huffman_table_perso(jpg, mcu);
+    } else {
+        jpeg_set_huffman_table(jpg);
+    }
 
     /* Écriture des données dans l'image */
     jpeg_write_header(jpg);
