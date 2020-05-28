@@ -63,7 +63,7 @@ void dct(struct array_mcu *mcus)
         uint8_t h = mcus->sf[2*canal];
         uint8_t v = mcus->sf[2*canal + 1];
         for (size_t i_mcu=0; i_mcu < mcus->height*mcus->width; i_mcu ++) {
-            for (size_t i_bloc=0; i_bloc < mcus->sf[canal*2]*mcus->sf[canal*2+1]; i_bloc ++) {
+            for (size_t i_bloc=0; i_bloc < h*v; i_bloc ++) {
                 dct_bloc(mcus, canal, i_mcu, i_bloc, h, v, cos_bloc);
             }
         }
