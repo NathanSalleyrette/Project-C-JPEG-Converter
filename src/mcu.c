@@ -24,16 +24,17 @@ size_t get_indice_from_coordinates(struct array_mcu *mcu, uint8_t canal, size_t 
 struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpeg)
 {
 	struct array_mcu *mcus = malloc(sizeof(struct array_mcu));
-	mcus->sf = malloc(6 * sizeof(uint8_t));
+	mcus->ct = jpeg_get_nb_components(jpeg);
+	mcus->sf = malloc(2 * mcus->ct * sizeof(uint8_t));
 	mcus->sf[0] = jpeg_get_sampling_factor(jpeg, Y, H);
 	mcus->sf[1] = jpeg_get_sampling_factor(jpeg, Y, V);
 	/* Before subsampling, sampling factors for Cb and Cr are set to the same value as for Y */
-	for (uint8_t i = 2; i < 5; i += 2) {
-		mcus->sf[i] = mcus->sf[0];
-		mcus->sf[i + 1] = mcus->sf[1];
+	if (mcus->ct == COLOR) {
+		mcus->sf[2] = mcus->sf[0];
+		mcus->sf[3] = mcus->sf[1];
+		mcus->sf[4] = mcus->sf[0];
+		mcus->sf[5] = mcus->sf[1];
 	}
-
-	mcus->ct = jpeg_get_nb_components(jpeg);
 	mcus->width = (jpeg_get_image_width(jpeg) + (mcus->sf[0] << 3) - 1) / (mcus->sf[0] << 3);
 	mcus->height = (jpeg_get_image_height(jpeg) + (mcus->sf[1] << 3) - 1) / (mcus->sf[1] << 3);
 
