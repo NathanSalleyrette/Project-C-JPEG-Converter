@@ -512,21 +512,11 @@ extern void jpeg_set_huffman_table_perso(struct jpeg *jpg, struct array_mcu *mcu
                     }
                     if (i == 64) {
                         /* EOB 0x00 */
-
-
-                        /* Il faut encoder 0x00 pour canal et AC */
                         ++frequences_AC[canal][0x00];
-
-
                     } else {
                         while (n_nuls >= 16) {
                             /* ZRL 0xF0 */
-
-
-                            /* Il faut encoder 0xF0 pour canal et AC */
                             ++frequences_AC[canal][0xF0];
-
-
                             n_nuls -= 16;
                         }
                         /* On doit encore coder n_nuls (<16) coeffs nuls et
@@ -537,12 +527,7 @@ extern void jpeg_set_huffman_table_perso(struct jpeg *jpg, struct array_mcu *mcu
                         uint8_t magnitudeAC = magnitude(coeffAC);
                         /* Le symbole RLE à encoder est le suivant */
                         uint8_t symbole = (n_nuls << 4) | magnitudeAC;
-
-
-                        /* Il faut encoder symbole pour canal et AC */
                         ++frequences_AC[canal][symbole];
-
-
                         /* On passe au coefficient suivant */
                         ++i;
                     }
@@ -625,6 +610,11 @@ extern void jpeg_set_huffman_type(struct jpeg *jpg, bool b)
     jpg->huffman_perso = b;
 }
 
+extern bool jpeg_get_huffman_type(struct jpeg *jpg)
+{
+    return jpg->huffman_perso;
+}
+
 /*
     Indique le type de table de quantification utilisée
     true : avec perte
@@ -633,4 +623,9 @@ extern void jpeg_set_huffman_type(struct jpeg *jpg, bool b)
 extern void jpeg_set_loss(struct jpeg *jpg, bool b)
 {
     jpg->loss = b;
+}
+
+extern bool jpeg_get_loss(struct jpeg *jpg)
+{
+    return jpg->loss;
 }

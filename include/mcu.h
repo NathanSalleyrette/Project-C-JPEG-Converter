@@ -47,4 +47,12 @@ extern struct array_mcu *get_mcu_from_jpeg(struct jpeg *jpg);
 */
 extern void delete_mcu(struct array_mcu *mcu);
 
+/*
+    Donne l'indice dans mcu->data[canal] corresspondant aux coordonnées (x, y)
+*/
+extern size_t get_indice_from_coordinates(struct array_mcu *mcu,
+                                          uint8_t canal,
+                                          size_t x,
+                                          size_t y);
+
 #endif

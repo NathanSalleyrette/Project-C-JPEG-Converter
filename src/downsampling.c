@@ -1,80 +1,56 @@
-# include "downsampling.h"
-# include "mcu.h"
-# include "jpeg_writer.h"
-# include <stdint.h>
-# include <assert.h>
-# include <stdlib.h>
+#include <downsampling.h>
+#include <jpeg_writer.h>
+#include <stdio.h>
 
-uint8_t *set_sf(struct jpeg* jpg, struct array_mcu *mcus)
+void downsample(struct jpeg* jpg, struct array_mcu* mcu)
 {
-    /* met à jour mcus->sf et renvoie un pointeur vers un vecteur contenant les
-    facteurs de division des blocs */
-    enum color_component cc;
-    enum direction dir;
-    cc = Cb;
-    dir = H;
-    mcus->sf[2] = jpeg_get_sampling_factor(jpg, cc, dir);
-    dir = V;
-    mcus->sf[3] = jpeg_get_sampling_factor(jpg, cc, dir);
-    cc = Cr;
-    mcus->sf[5] = jpeg_get_sampling_factor(jpg, cc, dir);
-    dir = H;
-    mcus->sf[4] = jpeg_get_sampling_factor(jpg, cc, dir);
-    uint8_t *rapport = malloc(4*sizeof(uint8_t));
-    for (int i = 0; i<2; i++) {
-        rapport[2*i] = mcus->sf[0]/mcus->sf[2*(i+1)];
-        rapport[2*i + 1] = mcus->sf[1]/mcus->sf[2*(i+1) +1];
+    /* Le downsampling n'est utile que sur les images en couleur */
+    if (mcu->ct == GREY) {
+        return;
     }
-    return rapport;
-}
 
-void downsample(struct jpeg* jpg, struct array_mcu* mcus)
-/* apply downsampling over every mcu in the array_mcu */
-{
-    if (mcus->ct == COLOR) {
-        //mise à jour de sf et récupération du rapport d'échantillonnage
-        uint8_t* rapport = set_sf(jpg, mcus);
-        // pour Cb puis Cr
-        for (uint8_t canal=1; canal < 3; canal ++){
-            uint8_t h = mcus->sf[2*canal];
-            uint8_t v = mcus->sf[2*canal+1];
-            // pour chaque MCU
-            for (size_t i_mcu=0; i_mcu<mcus->height*mcus->width; i_mcu++) {
-                // hauteur puis largeur
-                for (int dimension = 0; dimension < 2; dimension++) {
-                    for (int i_classe = 0; i_classe < mcus->sf[2*canal+dimension]; i_classe++) {
-                        for (int i = 0; i < 64; i++) {
-                            // moyenne sur chaque coefficient par groupe
-                            int16_t moyenne = 0;
-                            // l'indice des bloc est incrémenté de 1 dans le
-                            // cas horizontal et de *nb_bloc_horizontaux* dans le cas vertical
-                            for (int i_bloc=i_classe*rapport[2*(canal-1)+dimension];\
-                                i_bloc<(i_classe + 1-dimension + dimension*mcus->sf[0])*rapport[2*(canal-1)+dimension];\
-                                 i_bloc = i_bloc + 1-dimension + dimension*mcus->sf[0]) {
-                                moyenne += mcus->data[canal][(i_mcu*h*v + i_bloc)*64 + i];
-                            }
-                            moyenne = moyenne/rapport[2*(canal-1)+dimension];
-                            // on attribue ensuite la moyenne au bloc correspondant à la simplification,
-                            // à savoir le i_classe ième
+    /* On set les valeurs de h et v dans mcu */
+    mcu->sf[2] = jpeg_get_sampling_factor(jpg, Cb, H);
+    mcu->sf[3] = jpeg_get_sampling_factor(jpg, Cb, V);
+    mcu->sf[4] = jpeg_get_sampling_factor(jpg, Cr, H);
+    mcu->sf[5] = jpeg_get_sampling_factor(jpg, Cr, V);
 
+    /* On parcourt les canaux Cb et Cr */
+    for (uint8_t canal = 1; canal < 3; ++canal) {
+        uint8_t h = mcu->sf[2*canal];
+        uint8_t v = mcu->sf[2*canal + 1];
+        uint8_t n_pixel_x = mcu->sf[0]/h;  /* Nbre de pixels à sommer sur x */
+        uint8_t n_pixel_y = mcu->sf[1]/v;  /* Nbre de pixels à sommer sur y */
+        uint8_t n_pixel = n_pixel_x*n_pixel_y;
+        size_t n_elem = mcu->width*mcu->height*h*v*64;
+        int16_t *tampon = malloc(sizeof(int16_t)*n_elem);
 
-                            /* Erreur ici : mcus->data[canal][(i_mcu*h*v + i_classe)*2 + i]
-                             * est en dehors des dimensions de mcus->data[canal] */
-                            mcus->data[canal][(i_mcu*h*v + i_classe)*64 + i] = moyenne;
-
-
-
-
-                        }
+        /* On parcourt tous les pixels de l'image d'arrivé */
+        for (uint32_t x_pixel_arrive = 0;
+                x_pixel_arrive < mcu->width*h*8; ++x_pixel_arrive) {
+            for (uint32_t y_pixel_arrive = 0;
+                    y_pixel_arrive < mcu->height*v*8; ++y_pixel_arrive) {
+                uint32_t x_somme_debut = x_pixel_arrive*n_pixel_x;
+                uint32_t y_somme_debut = y_pixel_arrive*n_pixel_y;
+                uint16_t somme = 0;
+                /* On somme tous les pixels du groupe */
+                for (uint32_t x_somme = x_somme_debut;
+                        x_somme < x_somme_debut+n_pixel_x; ++x_somme) {
+                    for (uint32_t y_somme = y_somme_debut;
+                            y_somme < y_somme_debut+n_pixel_y; ++y_somme) {
+                        somme += mcu->data[canal]\
+                        [get_indice_from_coordinates(mcu, 0, x_somme, y_somme)];
                     }
                 }
+
+                /* On donne la valeur correspondant au pixel d'arrivé */
+                tampon[get_indice_from_coordinates(mcu, canal,
+                            x_pixel_arrive, y_pixel_arrive)] = somme/n_pixel;
+
             }
         }
-         for (int canal = 1; canal < 3; canal++) {
-             mcus->data[canal] = realloc(mcus->data[canal], \
-             sizeof(int16_t)*mcus->height*mcus->width*64\
-             *(mcus->sf[2*canal]*mcus->sf[2*canal+1]));
-        }
-        free(rapport);
+        /* On remplace mcu->data[canal] par le tampon */
+        free(mcu->data[canal]);
+        mcu->data[canal] = tampon;
     }
 }
