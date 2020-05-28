@@ -26,14 +26,16 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		printf("This program allows you to encode a PPM or PGM file into a JPEG image.\n");
 		printf("It only supports binary formats with 256 shades for each component for input files.\n\n");
 		printf("Possible options are :\n\n");
-		printf("--huffman=type\n");
-		printf("Specifies what type of huffman table to use. \'type\' should be one of the following :\n");
+		printf("--huffman=<arg>\n");
+		printf("Specifies what type of huffman table to use. <arg> should be one of the following :\n");
 		printf("\'static\'  : Use precalculated tables.\n");
 		printf("\'dynamic\' : Generate tables from the image data.\n\n");
-		printf("--outfile=output_file.jpg\n");
+		printf("--outfile=<output_file>\n");
 		printf("Specifies the name for the ouptut file, which is by default set to <input_file>.jpg.\n\n");
+		printf("--quantification=<arg>\n");
+		printf("Specifies whether quantification should be done with or without loss. <arg> should be either \'loss\' or \'lossless\'.\n\n");
 		printf("--sample=h1xv1,h2xv2,h3xv3\n");
-		printf("Specifies the sampling factors hxv for the 3 color componants (RGB), which are by default set to 1x1.\n");
+		printf("Specifies the sampling factors hxv for the 3 color components (RGB), which are by default set to 1x1.\n");
 		return NULL;
 	}
 
@@ -41,6 +43,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	bool outfile_flag = false;
 	bool sample_flag = false;
 	bool huffman_flag = false;
+	bool quantification_flag = false;
 
 	/* jpeg struct containing all the data extracted */
 	struct jpeg *jpeg = jpeg_create();
@@ -127,11 +130,29 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 			else if (!strcmp(&argv[i][10], "dynamic"))
 				jpeg_set_huffman_type(jpeg, true);
 			else {
-				printf("\'%s\' is not a valid parameter for --huffman option.\n", &argv[i][10]);
+				printf("Invalid argument : \'%s\' is not a valid parameter for --huffman option.\n", &argv[i][10]);
 				return NULL;
 			}
 			huffman_flag = true;
 		}
+
+		/* --quantification option */
+		else if (!strncmp(argv[i], "--quantification=", 17)) {
+			if (quantification_flag) {
+				printf("\'--quantification\' option should only be called once.\n");
+				return NULL;
+			}
+			if (!strcmp(&argv[i][17], "lossless")) 
+				jpeg_set_loss(jpeg, false);
+			else if (!strcmp(&argv[i][17], "loss"))
+				jpeg_set_loss(jpeg, true);
+			else {
+				printf("Invalid argument : \'%s\' is not a valid parameter for --quantification option.\n", &argv[i][17]);
+				return NULL;
+			}
+			quantification_flag = true;
+		}
+
 		/* Default case if option is invalid */
 		else {
 			printf("\'%s\' is not a valid option.\n", argv[i]);
