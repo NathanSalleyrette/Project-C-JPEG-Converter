@@ -18,12 +18,6 @@ void dct_precalcul(struct array_mcu *mcu);
 
 int main(int argc, char *argv[])
 {
-    printf("\
---------------------------------------------------------------------------------\n\
-Projet C : Mathis MARION, Alan MANIC, Nathan SALLEYRETTE, Thibault BRUYÈRE\n\
-Compression JPEG (JFIF) en mode baseline à partir de PPM/PGM (P6 ou P5)\n\
---------------------------------------------------------------------------------\n\
-");
 
     /* Récupération des informations sur le jpeg et le ppm/pgm */
     struct jpeg *jpg = get_jpeg_from_console(argc, argv);

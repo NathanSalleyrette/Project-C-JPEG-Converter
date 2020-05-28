@@ -26,6 +26,10 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		printf("This program allows you to encode a PPM or PGM file into a JPEG image.\n");
 		printf("It only supports binary formats with 256 shades for each component for input files.\n\n");
 		printf("Possible options are :\n\n");
+		printf("--huffman=type\n");
+		printf("Specifies what type of huffman table to use. \'type\' should be one of the following :\n");
+		printf("\'static\'  : Use precalculated tables.\n");
+		printf("\'dynamic\' : Generate tables from the image data.\n\n");
 		printf("--outfile=output_file.jpg\n");
 		printf("Specifies the name for the ouptut file, which is by default set to <input_file>.jpg.\n\n");
 		printf("--sample=h1xv1,h2xv2,h3xv3\n");
@@ -36,6 +40,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	/* flags to check that options are called only once */
 	bool outfile_flag = false;
 	bool sample_flag = false;
+	bool huffman_flag = false;
 
 	/* jpeg struct containing all the data extracted */
 	struct jpeg *jpeg = jpeg_create();
@@ -111,6 +116,22 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 			sample_flag = true;
 		}
 
+		/* --huffman option */
+		else if (!strncmp(argv[i], "--huffman=", 10)) {
+			if (huffman_flag) {
+				printf("\'--huffman\' option should only be called once.\n");
+				return NULL;
+			}
+			if (!strcmp(&argv[i][10], "static")) 
+				jpeg_set_huffman_type(jpeg, false);
+			else if (!strcmp(&argv[i][10], "dynamic"))
+				jpeg_set_huffman_type(jpeg, true);
+			else {
+				printf("\'%s\' is not a valid parameter for --huffman option.\n", &argv[i][10]);
+				return NULL;
+			}
+			huffman_flag = true;
+		}
 		/* Default case if option is invalid */
 		else {
 			printf("\'%s\' is not a valid option.\n", argv[i]);
@@ -136,12 +157,10 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		printf("Input file \'%s\' does not have \'.ppm\' or \'.pgm\' extension.\n", input_filename);
 		return NULL;
 	}
-	else if (!strcmp(&input_filename[name_length - 4], ".ppm")) {
+	else if (!strcmp(&input_filename[name_length - 4], ".ppm")) 
 		type = PPM;
-	}
-	else if (!strcmp(&input_filename[name_length - 4], ".pgm")) {
+	else if (!strcmp(&input_filename[name_length - 4], ".pgm")) 
 		type = PGM;
-	}
 	else {
 		printf("Input file \'%s\' does not have \'.ppm\' or \'.pgm\' extension.\n", input_filename);
 		return NULL;
