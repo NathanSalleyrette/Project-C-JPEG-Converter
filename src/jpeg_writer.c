@@ -512,21 +512,11 @@ extern void jpeg_set_huffman_table_perso(struct jpeg *jpg, struct array_mcu *mcu
                     }
                     if (i == 64) {
                         /* EOB 0x00 */
-
-
-                        /* Il faut encoder 0x00 pour canal et AC */
                         ++frequences_AC[canal][0x00];
-
-
                     } else {
                         while (n_nuls >= 16) {
                             /* ZRL 0xF0 */
-
-
-                            /* Il faut encoder 0xF0 pour canal et AC */
                             ++frequences_AC[canal][0xF0];
-
-
                             n_nuls -= 16;
                         }
                         /* On doit encore coder n_nuls (<16) coeffs nuls et
@@ -537,12 +527,7 @@ extern void jpeg_set_huffman_table_perso(struct jpeg *jpg, struct array_mcu *mcu
                         uint8_t magnitudeAC = magnitude(coeffAC);
                         /* Le symbole RLE à encoder est le suivant */
                         uint8_t symbole = (n_nuls << 4) | magnitudeAC;
-
-
-                        /* Il faut encoder symbole pour canal et AC */
                         ++frequences_AC[canal][symbole];
-
-
                         /* On passe au coefficient suivant */
                         ++i;
                     }
