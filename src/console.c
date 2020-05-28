@@ -180,8 +180,11 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	}
 	else if (!strcmp(&input_filename[name_length - 4], ".ppm")) 
 		type = PPM;
-	else if (!strcmp(&input_filename[name_length - 4], ".pgm")) 
+	else if (!strcmp(&input_filename[name_length - 4], ".pgm")) { 
+		if (sample_flag)
+			printf("Sampling factors will be ignored for Cb and Cr.\n");
 		type = PGM;
+	}
 	else {
 		printf("Input file \'%s\' does not have \'.ppm\' or \'.pgm\' extension.\n", input_filename);
 		return NULL;
@@ -198,7 +201,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	/* Reading passed comments */
 	char character = fgetc(image);
 	while (character == '#') {
-		while (fgetc(image) != '\n');
+		while (fgetc(image) != '\n' || !feof(image));
 		character = fgetc(image);
 	}
 	/* Reading magic number */
@@ -220,7 +223,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	/* Reading passed comments */
 	if (spacing == '\n') {
 		while (digit == '#') {
-			while (fgetc(image) != '\n');
+			while (fgetc(image) != '\n' || !feof(image));
 			digit = fgetc(image);
 		}
 	}
@@ -244,7 +247,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	/* Reading passed comments */
 	if (spacing == '\n') {
 		while (digit == '#') {
-			while (fgetc(image) != '\n');
+			while (fgetc(image) != '\n' || !feof(image));
 			digit = fgetc(image);
 		}
 	}
@@ -268,7 +271,7 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	/* Reading passed comments */
 	if (spacing == '\n') {
 		while (digit == '#') {
-			while (fgetc(image) != '\n');
+			while (fgetc(image) != '\n' || !feof(image));
 			digit = fgetc(image);
 		}
 	}
