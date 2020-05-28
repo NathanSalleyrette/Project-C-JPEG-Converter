@@ -191,4 +191,20 @@ extern void jpeg_set_quantization_table(struct jpeg *jpg,
 extern uint8_t *jpeg_get_quantization_table(struct jpeg *jpg,
                                             enum color_component cc);
 
+/*
+    Indique le type de table de Huffman utilisée
+    true : adpatée (avec huffman perso)
+    false : fixe (donnée dans htables.h)
+*/
+extern void jpeg_set_huffman_type(struct jpeg *jpg, bool b);
+extern bool jpeg_get_huffman_type(struct jpeg *jpg);
+
+/*
+    Indique le type de table de quantification utilisée
+    true : avec perte
+    false : sans perte
+*/
+extern void jpeg_set_loss(struct jpeg *jpg, bool b);
+extern bool jpeg_get_loss(struct jpeg *jpg);
+
 #endif /* JPEG_WRITER_H */

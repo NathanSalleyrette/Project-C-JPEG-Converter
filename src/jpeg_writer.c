@@ -12,6 +12,9 @@ struct jpeg {
     uint8_t *sampling_factor; /* Taille 6 (h0, v0, h1, v1, h2, v2) */
     struct huffman **huffman; /* Taille 4 (Y DC, Y AC, Cb-Cr DC, Cb-Cr AC) */
     uint8_t **quantification; /* Taille 2 (Y, Cb-Cr) */
+
+    bool loss;
+    bool huffman_perso;
 };
 
 /***********************************************/
@@ -31,6 +34,9 @@ extern struct jpeg *jpeg_create(void)
     jpg->sampling_factor = calloc(6, sizeof(uint8_t));
     jpg->huffman = calloc(4, sizeof(struct huffman *));
     jpg->quantification = calloc(2, sizeof(uint8_t *));
+
+    jpg->loss = false;
+    jpg->huffman_perso = false;
     return jpg;
 }
 
@@ -607,4 +613,24 @@ extern uint8_t *jpeg_get_quantization_table(struct jpeg *jpg,
                                             enum color_component cc)
 {
     return jpg->quantification[(cc == Y) ? 0 : 1];
+}
+
+/*
+    Indique le type de table de Huffman utilisée
+    true : adpatée (avec huffman perso)
+    false : fixe (donnée dans htables.h)
+*/
+extern void jpeg_set_huffman_type(struct jpeg *jpg, bool b)
+{
+    jpg->huffman_perso = b;
+}
+
+/*
+    Indique le type de table de quantification utilisée
+    true : avec perte
+    false : sans perte
+*/
+extern void jpeg_set_loss(struct jpeg *jpg, bool b)
+{
+    jpg->loss = b;
 }
