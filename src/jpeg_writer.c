@@ -15,6 +15,7 @@ struct jpeg {
 
     bool loss;
     bool huffman_perso;
+    enum dct_type dct_type;
 };
 
 /***********************************************/
@@ -628,4 +629,17 @@ extern void jpeg_set_loss(struct jpeg *jpg, bool b)
 extern bool jpeg_get_loss(struct jpeg *jpg)
 {
     return jpg->loss;
+}
+
+/*
+    Indique le type de table de DCT utilisée
+*/
+extern void jpeg_set_dct_type(struct jpeg *jpg, enum dct_type dt)
+{
+    jpg->dct_type = dt;
+}
+
+extern enum dct_type jpeg_get_dct_type(struct jpeg *jpg)
+{
+    return jpg->dct_type;
 }

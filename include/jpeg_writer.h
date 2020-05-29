@@ -40,6 +40,17 @@ enum direction
 };
 
 /*
+    Type énuméré représentant la DCT choisie.
+*/
+enum dct_type
+{
+    STANDARD,
+    LOEFFLER,
+    INTEGER,
+    NB_DCT_TYPES
+};
+
+/*
     Type opaque contenant l'intégralité des informations
     nécessaires à l'écriture de l'en-tête JPEG.
 */
@@ -206,5 +217,11 @@ extern bool jpeg_get_huffman_type(struct jpeg *jpg);
 */
 extern void jpeg_set_loss(struct jpeg *jpg, bool b);
 extern bool jpeg_get_loss(struct jpeg *jpg);
+
+/*
+    Indique le type de table de DCT utilisée
+*/
+extern void jpeg_set_dct_type(struct jpeg *jpg, enum dct_type dt);
+extern enum dct_type jpeg_get_dct_type(struct jpeg *jpg);
 
 #endif /* JPEG_WRITER_H */
