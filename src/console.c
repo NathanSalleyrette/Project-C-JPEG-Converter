@@ -26,14 +26,19 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 		printf("This program allows you to encode a PPM or PGM file into a JPEG image.\n");
 		printf("It only supports binary formats with 256 shades for each component for input files.\n\n");
 		printf("Possible options are :\n\n");
+		printf("--dct=<arg>\n");
+		printf("Specifies what algorithm to use when calculating the discrete cosine transform. <arg> should be one of the following:\n");
+		printf("\'standard\' : Basic and rather slow algorithm. (used by default)\n");
+		printf("\'loeffler\' : Loeffler's algorithm, rather fast.\n");
+		printf("\'fast\'     : The fastest option, with a cost in precision.\n\n");
 		printf("--huffman=<arg>\n");
-		printf("Specifies what type of huffman table to use. <arg> should be one of the following :\n");
-		printf("\'static\'  : Use precalculated tables.\n");
+		printf("Specifies what type of huffman table to use. <arg> should be one of the following:\n");
+		printf("\'static\'  : Use precalculated tables. (used by default)\n");
 		printf("\'dynamic\' : Generate tables from the image data.\n\n");
 		printf("--outfile=<output_file>\n");
 		printf("Specifies the name for the ouptut file, which is by default set to <input_file>.jpg.\n\n");
 		printf("--quantification=<arg>\n");
-		printf("Specifies whether quantification should be done with or without loss. <arg> should be either \'loss\' or \'lossless\'.\n\n");
+		printf("Specifies whether quantification should be done with or without loss. <arg> should be either \'loss\' or \'lossless\'. (default is lossless)\n\n");
 		printf("--sample=h1xv1,h2xv2,h3xv3\n");
 		printf("Specifies the sampling factors hxv for the 3 color components (RGB), which are by default set to 1x1.\n");
 		return NULL;
@@ -44,10 +49,15 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 	bool sample_flag = false;
 	bool huffman_flag = false;
 	bool quantification_flag = false;
+	bool dct_flag = false;
 
 	/* jpeg struct containing all the data extracted */
 	struct jpeg *jpeg = jpeg_create();
 	uint8_t sampling_factors[] = {1, 1, 1, 1, 1, 1};
+	/* Setting default flags */
+	jpeg_set_huffman_type(jpeg, false);
+	jpeg_set_loss(jpeg, false);
+	jpeg_set_dct_type(jpeg, STANDARD);
 
 	for (int32_t i = 1; i < argc - 1; i++) {
 
@@ -151,6 +161,25 @@ struct jpeg *get_jpeg_from_console(int argc, char **argv)
 				return NULL;
 			}
 			quantification_flag = true;
+		
+		}
+		/* --dct option */
+		else if (!strncmp(argv[i], "--dct=", 6)) {
+			if (dct_flag) {
+				printf("\'--dct\' option should only be called once.\n");
+				return NULL;
+			}
+			if (!strcmp(&argv[i][6], "standard")) 
+				jpeg_set_dct_type(jpeg, STANDARD);
+			else if (!strcmp(&argv[i][6], "loeffler"))
+				jpeg_set_dct_type(jpeg, LOEFFLER);
+			else if (!strcmp(&argv[i][6], "fast"))
+				jpeg_set_dct_type(jpeg, INTEGER);
+			else {
+				printf("Invalid argument : \'%s\' is not a valid parameter for --dct option.\n", &argv[i][6]);
+				return NULL;
+			}
+			dct_flag = true;
 		}
 
 		/* Default case if option is invalid */
