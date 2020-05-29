@@ -9,12 +9,6 @@
 #include <rgb_to_ycbcr.h>
 #include <quantification.h>
 
-/* À enlever */
-#include <math.h>
-#define _PI (3.1415926535898f)
-/* Petit protoype */
-void dct_precalcul(struct array_mcu *mcu);
-
 
 int main(int argc, char *argv[])
 {
