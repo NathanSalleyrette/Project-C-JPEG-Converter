@@ -1,2 +1,2 @@
-# Projet-C-Convertisseur-JPEG
+# Project-C-JPEG-Converter
 Converter PNG -> JPEG coded in C
